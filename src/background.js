@@ -53,7 +53,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             loginId: p.loginId || existing?.loginId || '',
             password: p.password || existing?.password || '',
             deadlines: mergeDeadlines(existing?.deadlines, p.deadlines),
-            status: existing?.status || '',
+            stage: existing?.stage || '気になる',
             memo: existing?.memo || '',
           };
           const saved = await saveEntry(merged);
@@ -65,6 +65,31 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case 'SYNC_ALL':
           sendResponse({ ok: true, sync: await syncAll() });
           break;
+
+        case 'PENDING_LOGIN':
+          // ホーム/カードの「ログイン」押下時。次に開くタブで自動入力する予約。
+          await chrome.storage.session.set({
+            pendingLogin: { host: msg.host, ts: Date.now() },
+          });
+          sendResponse({ ok: true });
+          break;
+
+        case 'CONSUME_LOGIN': {
+          // content.js がページ読込時に問い合わせ。予約が一致＆新鮮なら資格情報を返す。
+          const { pendingLogin } = await chrome.storage.session.get('pendingLogin');
+          const fresh = pendingLogin && Date.now() - pendingLogin.ts < 60000;
+          if (fresh && pendingLogin.host === msg.host) {
+            await chrome.storage.session.remove('pendingLogin');
+            const entry = await getEntryByHost(msg.host);
+            sendResponse({
+              ok: true,
+              creds: entry ? { loginId: entry.loginId, password: entry.password } : null,
+            });
+          } else {
+            sendResponse({ ok: true, creds: null });
+          }
+          break;
+        }
 
         case 'GET_PROFILE':
           sendResponse({ ok: true, profile: await getProfile() });

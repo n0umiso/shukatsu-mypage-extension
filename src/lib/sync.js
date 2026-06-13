@@ -13,7 +13,7 @@ function toPayload(entry, syncPassword) {
     deadlines: (entry.deadlines || [])
       .map((d) => `${d.type ? d.type + ':' : ''}${d.date}`)
       .join(' / '),
-    status: entry.status || '',
+    stage: entry.stage || '',
     memo: entry.memo || '',
     updatedAt: entry.updatedAt || '',
     deleted: !!entry.deleted,

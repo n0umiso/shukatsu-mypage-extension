@@ -419,10 +419,41 @@
     document.body.appendChild(box);
   }
 
+  // ログインフォームへ資格情報を流し込む（ホームの「ログイン」起点）
+  function fillLoginForm(creds) {
+    if (!creds) return false;
+    const rule = activeRule();
+    const pw =
+      (rule && document.querySelector(rule.pwSelector)) ||
+      document.querySelector('input[type="password"]');
+    if (!pw) return false;
+    let idInput = rule && document.querySelector(rule.idSelector);
+    if (!idInput) {
+      const inputs = [...document.querySelectorAll(
+        'input[type="text"], input[type="email"], input[type="tel"], input:not([type])'
+      )];
+      for (const inp of inputs) {
+        if (pw.compareDocumentPosition(inp) & Node.DOCUMENT_POSITION_PRECEDING) idInput = inp;
+      }
+    }
+    const fire = (el) => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    if (idInput && creds.loginId) { idInput.value = creds.loginId; fire(idInput); }
+    if (creds.password) { pw.value = creds.password; fire(pw); }
+    return true;
+  }
+
   // 対応サイトならボタンを出す
   const rule = activeRule();
   if (rule) {
     if (document.body) injectButtons(rule);
     else window.addEventListener('DOMContentLoaded', () => injectButtons(rule));
+
+    // ホームから「ログイン」で開かれた場合のみ、ID/PW を自動入力（自動送信はしない）
+    chrome.runtime.sendMessage({ type: 'CONSUME_LOGIN', host: siteKey() }, (res) => {
+      if (res && res.creds) fillLoginForm(res.creds);
+    });
   }
 })();

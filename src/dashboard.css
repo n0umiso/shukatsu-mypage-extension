@@ -118,6 +118,55 @@ button.ghost { background: transparent; border: 1px solid var(--line); padding: 
 .deadline-list .d-type { font-size: 12px; background: var(--accent-bg); color: var(--accent); padding: 2px 8px; border-radius: 8px; }
 .deadline-list .d-company { color: var(--fg); }
 
+/* ---- ホーム ---- */
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+.metric { background: var(--panel); border: 1px solid var(--line); border-radius: var(--border-radius-lg, 12px); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.m-label { font-size: 12px; color: var(--muted); }
+.m-num { font-size: 26px; font-weight: 500; color: var(--fg); }
+.m-num.warn { color: var(--danger); }
+h3.sec { font-size: 15px; font-weight: 600; margin: 22px 0 10px; }
+.home-list { display: flex; flex-direction: column; gap: 8px; }
+.home-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; }
+.home-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.home-row .body { flex: 1; min-width: 0; }
+.home-row .r-name { font-size: 14px; color: var(--fg); }
+.home-row .r-sub { font-size: 12px; color: var(--muted); }
+.home-row .r-when { font-size: 12px; white-space: nowrap; }
+.home-row .logo { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
+.home-row button { font-size: 12px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 8px; background: #f9fafb; cursor: pointer; white-space: nowrap; }
+.home-row button:hover { background: #f3f4f6; }
+.home-empty { color: var(--muted); font-size: 13px; padding: 16px; text-align: center; }
+
+/* ---- 選考管理 ---- */
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg-btn { border: none; background: var(--panel); padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--muted); }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.stage-flow { font-size: 11px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+.senko-list { display: flex; flex-direction: column; gap: 10px; }
+.senko-row { display: grid; grid-template-columns: 1.1fr 1.9fr 1.4fr; align-items: center; gap: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; cursor: pointer; }
+.senko-row:hover { border-color: var(--accent); }
+.senko-row .s-name { font-size: 14px; color: var(--fg); }
+.senko-row .s-ind { font-size: 11px; color: var(--muted); }
+.bar { height: 6px; border-radius: 3px; background: #eef2ff; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); }
+.bar.done > span { background: #059669; }
+.bar.out > span { background: #9ca3af; }
+.s-stage { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.s-stage.done { color: #059669; }
+.s-next { font-size: 12px; text-align: right; }
+.s-next.danger { color: var(--danger); }
+.s-next.warn { color: #b45309; }
+.s-next.muted { color: var(--muted); }
+
+.kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.kan-col { flex: 0 0 150px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.kan-head { font-size: 12px; font-weight: 600; color: var(--fg); margin-bottom: 8px; display: flex; justify-content: space-between; }
+.kan-head .cnt { color: var(--muted); font-weight: 400; }
+.kan-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; }
+.kan-card:hover { border-color: var(--accent); }
+.kan-card .k-name { font-size: 13px; color: var(--fg); }
+.kan-card .k-next { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
 /* ---- モーダル ---- */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal-card { background: var(--panel); border-radius: 14px; padding: 22px; width: 460px; max-width: 100%; max-height: 90vh; overflow-y: auto; }

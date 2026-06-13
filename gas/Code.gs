@@ -8,7 +8,7 @@
  */
 
 const SHEET_NAME = 'マイページ管理';
-const HEADERS = ['id', '企業名', '業界', 'マイページURL', 'ログインID', 'パスワード', '締切', 'ステータス', 'メモ', '更新日時'];
+const HEADERS = ['id', '企業名', '業界', 'マイページURL', 'ログインID', 'パスワード', '締切', '選考ステージ', 'メモ', '更新日時'];
 
 function doGet() {
   return json_({ ok: true, message: '就活マイページ マネージャー GAS は稼働中です' });
@@ -58,7 +58,7 @@ function rowFromEntry_(entry) {
     entry.loginId || '',
     entry.password || '',
     entry.deadlines || '',
-    entry.status || '',
+    entry.stage || '',
     entry.memo || '',
     entry.updatedAt || '',
   ];

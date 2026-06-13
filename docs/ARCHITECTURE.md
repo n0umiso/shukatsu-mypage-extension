@@ -37,9 +37,16 @@
   companyName, industry,
   mypageUrl, loginId, password,
   deadlines: [{ type, date }],
-  status, memo, updatedAt, deleted?
+  stage, memo, updatedAt, deleted?   // stage は STAGES の8段 or OUTCOMES（お祈り/辞退）
 }
 ```
+
+選考ステージは `src/lib/stages.js` の `STAGES`（気になる→…→内定の8段）で定義。
+ホームと選考管理は同じ `stage`/`deadlines` を別ビューで表示する（二重管理なし）。
+
+ダッシュボードのビュー: ホーム / マイページ / 選考管理（進捗・カンバン） / 締切 / 設定。
+「ログイン」押下時は `chrome.storage.session` に `pendingLogin` を置き、開いたタブの
+content.js が `CONSUME_LOGIN` で受け取って ID/PW を自動入力する（自動送信はしない）。
 
 ## メッセージ API（background.js）
 

@@ -1,5 +1,7 @@
 // 管理画面のロジック。すべての更新は background 経由で行う。
 
+import { ALL_STATES } from './lib/stages.js';
+
 const INDUSTRIES = [
   '業界未設定', 'メーカー', '商社', '金融', 'コンサル', 'IT・通信',
   'インフラ・エネルギー', '広告・マスコミ', '不動産・建設', '人材・サービス', '小売・消費財', 'その他',
@@ -63,7 +65,7 @@ function render(entries) {
     li.innerHTML = `
       <div class="item-head">
         <span class="item-name"></span>
-        <span class="item-status">${e.status || ''}</span>
+        <span class="item-status">${e.stage || ''}</span>
       </div>
       <div class="item-sub"></div>
       <div class="item-deadlines">${dls}</div>
@@ -95,15 +97,17 @@ async function refresh() {
   render(res.entries || []);
 }
 
-function fillIndustrySelect(value) {
-  const sel = $('#f-industry');
+function fillSelect(sel, values, value, fallback) {
   sel.innerHTML = '';
-  for (const ind of INDUSTRIES) {
+  for (const v of values) {
     const o = document.createElement('option');
-    o.value = ind; o.textContent = ind;
-    if ((value || '業界未設定') === ind) o.selected = true;
+    o.value = v; o.textContent = v;
+    if ((value || fallback) === v) o.selected = true;
     sel.appendChild(o);
   }
+}
+function fillIndustrySelect(value) {
+  fillSelect($('#f-industry'), INDUSTRIES, value, '業界未設定');
 }
 
 function openEditor(entry) {
@@ -116,7 +120,7 @@ function openEditor(entry) {
   $('#f-pw').value = entry?.password || '';
   $('#f-pw').type = 'password';
   $('#f-deadlines').value = deadlinesToText(entry?.deadlines);
-  $('#f-status').value = entry?.status || '';
+  fillSelect($('#f-stage'), ALL_STATES, entry?.stage, '気になる');
   $('#f-memo').value = entry?.memo || '';
   editorEl._host = entry?.host || '';
   editorEl.classList.remove('hidden');
@@ -137,7 +141,7 @@ async function saveEditor() {
     loginId: $('#f-id').value.trim(),
     password: $('#f-pw').value,
     deadlines: textToDeadlines($('#f-deadlines').value),
-    status: $('#f-status').value,
+    stage: $('#f-stage').value,
     memo: $('#f-memo').value.trim(),
   };
   const res = await send({ type: 'UPSERT', entry });
