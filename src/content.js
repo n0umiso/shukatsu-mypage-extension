@@ -246,6 +246,12 @@
   }
   const clean = (s) => (s || '').replace(/\s+/g, '');
 
+  // テキスト入力の「質問文」を取得（近接コンテナのテキスト）
+  function questionText(el) {
+    const p = el.closest('td, dd, li, label, p, tr, div, fieldset');
+    return p ? p.textContent : '';
+  }
+
   // 指定 name のラジオ群から、ラベルが target に一致するものを選択（クリック）
   function selectByLabel(name, target) {
     if (!target) return false;
@@ -314,6 +320,25 @@
         (e) => clean(radioLabelText(e)) === g
       );
       if (hit) { hit.click(); n++; }
+    }
+
+    // 企業をまたいで繰り返し出る自由記述を、質問文のキーワードで補完する
+    const knownNames = new Set(Object.keys(map));
+    const textRules = [
+      { re: /(出身)?高校(名|学校名)?|出身校/, val: p.highSchool },
+    ];
+    for (const el of document.querySelectorAll('input[type="text"], textarea')) {
+      if (el.value || (el.name && knownNames.has(el.name))) continue; // 既入力/既知欄はスキップ
+      const q = clean(questionText(el));
+      for (const r of textRules) {
+        if (r.val && r.re.test(q)) {
+          el.value = r.val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          n++;
+          break;
+        }
+      }
     }
     return n;
   }
