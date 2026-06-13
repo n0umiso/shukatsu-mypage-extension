@@ -1,199 +1,156 @@
-// 管理画面のロジック。すべての更新は background 経由で行う。
+// ツールバーのポップアップ。素早い起動に特化（編集・全管理はダッシュボード）。
+import { stageLabel } from './lib/stages.js';
 
-import { ALL_STATES } from './lib/stages.js';
-
-const INDUSTRIES = [
-  '業界未設定', 'メーカー', '商社', '金融', 'コンサル', 'IT・通信',
-  'インフラ・エネルギー', '広告・マスコミ', '不動産・建設', '人材・サービス', '小売・消費財', 'その他',
-];
-
-const $ = (sel) => document.querySelector(sel);
-const listEl = $('#list');
+const $ = (s) => document.querySelector(s);
 const statusEl = $('#status');
-const editorEl = $('#editor');
-let editingId = null;
+const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
 
-function send(msg) {
-  return new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
+let entries = [];
+let activeTab = null;
+
+// ---- ユーティリティ ----
+function siteKey(url) {
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.split('/').filter(Boolean)[0] || '';
+    return u.hostname + (seg ? '/' + seg : '');
+  } catch { return ''; }
 }
-
-function setStatus(text, kind = '') {
-  statusEl.textContent = text;
-  statusEl.className = `status ${kind}`;
-  if (text) setTimeout(() => { if (statusEl.textContent === text) statusEl.textContent = ''; }, 4000);
-}
-
 function daysUntil(dateStr) {
-  const d = new Date(dateStr.replace(/\//g, '-'));
+  const d = new Date(String(dateStr).replace(/\//g, '-'));
   if (isNaN(d)) return null;
   return Math.ceil((d - new Date().setHours(0, 0, 0, 0)) / 86400000);
 }
-
-function deadlinesToText(deadlines = []) {
-  return deadlines.map((d) => (d.type ? `${d.type}:${d.date}` : d.date)).join('\n');
+function faviconUrl(url) {
+  try { return `https://www.google.com/s2/favicons?sz=64&domain=${new URL(url).hostname}`; }
+  catch { return ''; }
+}
+function whenColor(n) {
+  if (n === null) return '#9ca3af';
+  if (n <= 2) return '#dc2626';
+  if (n <= 7) return '#b45309';
+  return '#4f46e5';
+}
+function whenText(n) {
+  return n === null ? '' : n < 0 ? '終了' : n === 0 ? '今日' : `あと${n}日`;
+}
+function setStatus(text, kind = '') {
+  statusEl.textContent = text;
+  statusEl.className = `status ${kind}`;
+  if (text) setTimeout(() => { if (statusEl.textContent === text) statusEl.textContent = ''; }, 3500);
 }
 
-function textToDeadlines(text) {
-  return text
-    .split(/\n+/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => {
-      const i = l.lastIndexOf(':');
-      if (i > 0) return { type: l.slice(0, i).trim(), date: l.slice(i + 1).trim() };
-      return { type: '', date: l };
-    });
+async function openLogin(e) {
+  if (!e.mypageUrl) return;
+  await send({ type: 'PENDING_LOGIN', host: e.host });
+  chrome.tabs.create({ url: e.mypageUrl });
+  window.close();
 }
 
-function render(entries) {
-  listEl.innerHTML = '';
-  if (!entries.length) {
-    listEl.innerHTML = '<li class="empty">まだ登録がありません。<br>マイページにログインするか「＋ 今のページ」で追加できます。</li>';
-    return;
+function logoEl(e) {
+  const fav = faviconUrl(e.mypageUrl);
+  if (fav) {
+    const img = document.createElement('img');
+    img.className = 'logo'; img.src = fav; img.alt = '';
+    return img;
   }
-  for (const e of entries) {
-    const li = document.createElement('li');
-    li.className = 'item';
-    const dls = (e.deadlines || [])
-      .map((d) => {
-        const n = daysUntil(d.date);
-        const soon = n !== null && n <= 7 ? ' soon' : '';
-        const left = n !== null && n >= 0 ? `（あと${n}日）` : '';
-        return `<span class="dl${soon}">${d.type ? d.type + ' ' : ''}${d.date}${left}</span>`;
-      })
-      .join('');
-    li.innerHTML = `
-      <div class="item-head">
-        <span class="item-name"></span>
-        <span class="item-status">${e.stage || ''}</span>
-      </div>
-      <div class="item-sub"></div>
-      <div class="item-deadlines">${dls}</div>
-      <div class="item-actions">
-        <button class="open">開く</button>
-        <button class="copy" data-v="id">ID</button>
-        <button class="copy" data-v="pw">PW</button>
-        <button class="edit">編集</button>
-        <button class="del">削除</button>
-      </div>`;
-    li.querySelector('.item-name').textContent = e.companyName || e.host || '(無題)';
-    li.querySelector('.item-sub').textContent = e.loginId ? `ID: ${e.loginId}` : e.mypageUrl;
-    li.querySelector('.open').onclick = () => e.mypageUrl && chrome.tabs.create({ url: e.mypageUrl });
-    li.querySelector('.edit').onclick = () => openEditor(e);
-    li.querySelector('.del').onclick = () => removeEntry(e);
-    li.querySelectorAll('.copy').forEach((btn) => {
-      btn.onclick = async () => {
-        const val = btn.dataset.v === 'id' ? e.loginId : e.password;
-        await navigator.clipboard.writeText(val || '');
-        setStatus(`${btn.dataset.v === 'id' ? 'ID' : 'パスワード'}をコピーしました`, 'ok');
-      };
-    });
-    listEl.appendChild(li);
-  }
+  const d = document.createElement('div');
+  d.className = 'logo';
+  d.style.cssText = 'background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:11px';
+  d.textContent = (e.companyName || e.host || '?').charAt(0);
+  return d;
 }
 
-async function refresh() {
-  const res = await send({ type: 'LIST' });
-  render(res.entries || []);
+// ---- 現在のページ ----
+function renderCurrent() {
+  const key = siteKey(activeTab?.url || '');
+  const cur = entries.find((e) => e.host === key);
+  const sec = $('#current');
+  if (!cur) { sec.classList.add('hidden'); return; }
+  sec.classList.remove('hidden');
+  $('#cur-name').textContent = cur.companyName || cur.host;
+  $('#cur-stage').textContent = stageLabel(cur.stage || '気になる');
+  $('#cur-login').onclick = () => openLogin(cur);
+  $('#cur-id').onclick = async () => { await navigator.clipboard.writeText(cur.loginId || ''); setStatus('IDをコピーしました', 'ok'); };
+  $('#cur-pw').onclick = async () => { await navigator.clipboard.writeText(cur.password || ''); setStatus('パスワードをコピーしました', 'ok'); };
+  $('#cur-capture').onclick = captureCurrent;
 }
 
-function fillSelect(sel, values, value, fallback) {
-  sel.innerHTML = '';
-  for (const v of values) {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v;
-    if ((value || fallback) === v) o.selected = true;
-    sel.appendChild(o);
+// ---- 締切が近い ----
+function renderDeadlines() {
+  const rows = [];
+  for (const e of entries) for (const d of e.deadlines || []) rows.push({ e, type: d.type || '締切', n: daysUntil(d.date), date: d.date });
+  const near = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 3);
+  const box = $('#pop-deadlines');
+  box.innerHTML = '';
+  if (!near.length) { box.innerHTML = '<div class="empty">直近の締切はありません</div>'; return; }
+  for (const r of near) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button class="go">開く</button>`;
+    row.querySelector('.dot').style.background = whenColor(r.n);
+    row.querySelector('.r-name').textContent = r.e.companyName || r.e.host;
+    row.querySelector('.r-sub').textContent = `${r.type}・${r.date}`;
+    const w = row.querySelector('.r-when'); w.textContent = whenText(r.n); w.style.color = whenColor(r.n);
+    row.querySelector('.go').onclick = () => openLogin(r.e);
+    box.appendChild(row);
   }
 }
-function fillIndustrySelect(value) {
-  fillSelect($('#f-industry'), INDUSTRIES, value, '業界未設定');
-}
 
-function openEditor(entry) {
-  editingId = entry ? entry.id : null;
-  $('#editor-title').textContent = entry ? '編集' : '新規追加';
-  $('#f-company').value = entry?.companyName || '';
-  fillIndustrySelect(entry?.industry);
-  $('#f-url').value = entry?.mypageUrl || '';
-  $('#f-id').value = entry?.loginId || '';
-  $('#f-pw').value = entry?.password || '';
-  $('#f-pw').type = 'password';
-  $('#f-deadlines').value = deadlinesToText(entry?.deadlines);
-  fillSelect($('#f-stage'), ALL_STATES, entry?.stage, '気になる');
-  $('#f-memo').value = entry?.memo || '';
-  editorEl._host = entry?.host || '';
-  editorEl.classList.remove('hidden');
-}
-
-function closeEditor() {
-  editorEl.classList.add('hidden');
-  editingId = null;
-}
-
-async function saveEditor() {
-  const entry = {
-    id: editingId || undefined,
-    host: editorEl._host || (() => { try { return new URL($('#f-url').value).hostname; } catch { return ''; } })(),
-    companyName: $('#f-company').value.trim(),
-    industry: $('#f-industry').value,
-    mypageUrl: $('#f-url').value.trim(),
-    loginId: $('#f-id').value.trim(),
-    password: $('#f-pw').value,
-    deadlines: textToDeadlines($('#f-deadlines').value),
-    stage: $('#f-stage').value,
-    memo: $('#f-memo').value.trim(),
-  };
-  const res = await send({ type: 'UPSERT', entry });
-  closeEditor();
-  await refresh();
-  reportSync(res.sync, '保存しました');
-}
-
-async function removeEntry(e) {
-  if (!confirm(`「${e.companyName || e.host}」を削除しますか?`)) return;
-  const res = await send({ type: 'DELETE', id: e.id });
-  await refresh();
-  reportSync(res.sync, '削除しました');
-}
-
-function reportSync(sync, base) {
-  if (!sync || sync.skipped) return setStatus(base, 'ok');
-  if (sync.ok) setStatus(`${base}（スプレッドシート同期済）`, 'ok');
-  else setStatus(`${base} ／ 同期失敗: ${sync.error}`, 'err');
+// ---- クイックログイン ----
+function renderQuick() {
+  const quick = [...entries].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 5);
+  const box = $('#pop-quick');
+  box.innerHTML = '';
+  if (!quick.length) { box.innerHTML = '<div class="empty">対象サイトでログインすると自動で登録されます</div>'; return; }
+  for (const e of quick) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.appendChild(logoEl(e));
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = `<div class="r-name"></div>`;
+    body.querySelector('.r-name').textContent = e.companyName || e.host;
+    row.appendChild(body);
+    const btn = document.createElement('button');
+    btn.className = 'go'; btn.textContent = 'ログイン';
+    btn.onclick = () => openLogin(e);
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
 }
 
 async function captureCurrent() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
+  if (!activeTab?.id) return;
   let resp;
-  try {
-    resp = await chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_NOW' });
-  } catch {
-    return setStatus('このページからは取り込めません（対応ページで開いてください）', 'err');
-  }
+  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'CAPTURE_NOW' }); }
+  catch { return setStatus('このページからは取り込めません', 'err'); }
   if (!resp?.payload) return setStatus('取り込みに失敗しました', 'err');
   const res = await send({ type: 'CAPTURE', payload: resp.payload });
   await refresh();
-  reportSync(res.sync, res.isNew ? '新規に取り込みました' : '更新しました');
+  setStatus(res.isNew ? '新規に保存しました' : '更新しました', 'ok');
+}
+
+async function refresh() {
+  const r = await send({ type: 'LIST' });
+  entries = r.entries || [];
+  renderCurrent();
+  renderDeadlines();
+  renderQuick();
 }
 
 // ---- イベント ----
-$('#capture').onclick = captureCurrent;
-$('#dashboard').onclick = () =>
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') });
 $('#sync').onclick = async () => {
   setStatus('同期中…');
   const res = await send({ type: 'SYNC_ALL' });
   if (res.sync?.ok) setStatus(`同期しました（${res.sync.count}件）`, 'ok');
-  else setStatus(`同期失敗: ${res.sync?.error}`, 'err');
+  else setStatus(`同期失敗: ${res.sync?.error || ''}`, 'err');
 };
-$('#opts').onclick = () => chrome.runtime.openOptionsPage();
-$('#save').onclick = saveEditor;
-$('#cancel').onclick = closeEditor;
-$('#pw-toggle').onclick = () => {
-  const f = $('#f-pw');
-  f.type = f.type === 'password' ? 'text' : 'password';
-};
+$('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') }); window.close(); };
+$('#dashboard').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') }); window.close(); };
+$('#capture').onclick = captureCurrent;
 
-refresh();
+(async () => {
+  [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  await refresh();
+})();

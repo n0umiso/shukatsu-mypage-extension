@@ -7,43 +7,39 @@
 <body>
   <header>
     <h1>就活マイページ</h1>
-    <div class="actions">
-      <button id="dashboard" title="一覧をタブで開く">📋 一覧</button>
-      <button id="capture" title="表示中のページを取り込む">＋ 今のページ</button>
-      <button id="sync" title="スプレッドシートへ同期">⟳ 同期</button>
-      <button id="opts" title="設定">⚙</button>
+    <div class="acts">
+      <button id="sync" title="スプレッドシート同期">⟳</button>
+      <button id="settings" title="情報・設定">⚙</button>
     </div>
   </header>
 
   <div id="status" class="status"></div>
 
-  <ul id="list" class="list"></ul>
-
-  <!-- 編集フォーム（モーダル風） -->
-  <div id="editor" class="editor hidden">
-    <h2 id="editor-title">編集</h2>
-    <label>企業名 <input id="f-company" type="text" /></label>
-    <label>業界 <select id="f-industry"></select></label>
-    <label>マイページURL <input id="f-url" type="text" /></label>
-    <label>ログインID <input id="f-id" type="text" /></label>
-    <label>パスワード
-      <span class="pw-row">
-        <input id="f-pw" type="password" />
-        <button id="pw-toggle" type="button" class="mini">表示</button>
-      </span>
-    </label>
-    <label>締切（1行に1件 / 例: ES:2026/06/30）
-      <textarea id="f-deadlines" rows="3"></textarea>
-    </label>
-    <label>選考ステージ
-      <select id="f-stage"></select>
-    </label>
-    <label>メモ <textarea id="f-memo" rows="2"></textarea></label>
-    <div class="editor-actions">
-      <button id="save">保存</button>
-      <button id="cancel" class="ghost">キャンセル</button>
+  <!-- 現在のページ -->
+  <section id="current" class="current hidden">
+    <div class="cur-label">このページ</div>
+    <div class="cur-row">
+      <span id="cur-name" class="cur-name"></span>
+      <span id="cur-stage" class="cur-stage"></span>
     </div>
-  </div>
+    <div class="cur-actions">
+      <button id="cur-login" class="btn-acc">ログイン</button>
+      <button id="cur-id" class="btn-sm">ID</button>
+      <button id="cur-pw" class="btn-sm">PW</button>
+      <button id="cur-capture" class="btn-sm">取込</button>
+    </div>
+  </section>
+
+  <div class="sec-title">⏰ 締切が近い</div>
+  <div id="pop-deadlines" class="rows"></div>
+
+  <div class="sec-title">⚡ クイックログイン</div>
+  <div id="pop-quick" class="rows"></div>
+
+  <footer>
+    <button id="capture" class="wide">＋ 今のページを保存</button>
+    <button id="dashboard" class="wide primary">ダッシュボードを開く</button>
+  </footer>
 
   <script type="module" src="popup.js"></script>
 </body>
