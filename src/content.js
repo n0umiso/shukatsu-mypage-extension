@@ -238,6 +238,28 @@
     return at > 0 ? [email.slice(0, at), email.slice(at + 1)] : ['', ''];
   }
 
+  // ラジオ/チェックの「ラベル文字」を取得（i-web は value でなくラベルで選ぶ）
+  function radioLabelText(el) {
+    if (el.labels && el.labels.length) return el.labels[0].textContent || '';
+    const p = el.closest('label, td, li, dd, div, span');
+    return p ? p.textContent : '';
+  }
+  const clean = (s) => (s || '').replace(/\s+/g, '');
+
+  // 指定 name のラジオ群から、ラベルが target に一致するものを選択（クリック）
+  function selectByLabel(name, target) {
+    if (!target) return false;
+    const t = clean(target);
+    const els = [...document.getElementsByName(name)].filter(
+      (e) => e.type === 'radio' || e.type === 'checkbox'
+    );
+    const el =
+      els.find((e) => clean(radioLabelText(e)) === t) ||
+      els.find((e) => clean(radioLabelText(e)).includes(t));
+    if (el) { el.click(); return true; }
+    return false;
+  }
+
   // i-web 専用マッピング
   function autofillIweb(p) {
     const map = {
@@ -272,6 +294,27 @@
     }
     let n = 0;
     for (const [name, val] of Object.entries(map)) if (setField(name, val)) n++;
+
+    // 学校選択ウィザード（2〜5ページ目）。各ページに該当する group だけ反応する。
+    // ラジオはラベル文字で選択するため、プロフィールは正式名称に合わせる必要がある。
+    const radioGroups = [
+      ['gkbn', p.schoolType],     // 学校区分
+      ['dken', p.uniPref],        // 学校所在地（都道府県）
+      ['daicd', p.university],    // 大学名
+      ['gkbcd', p.faculty],       // 学部
+      ['gkkcd', p.department],    // 学科
+      ['s_brkbn', p.scienceType], // 文理
+    ];
+    for (const [name, val] of radioGroups) if (selectByLabel(name, val)) n++;
+
+    // 性別: 質問票（enq系）は企業ごとに異なるので、ラベル一致する radio を汎用検索して選択
+    if (p.gender) {
+      const g = clean(p.gender);
+      const hit = [...document.querySelectorAll('input[type="radio"]')].find(
+        (e) => clean(radioLabelText(e)) === g
+      );
+      if (hit) { hit.click(); n++; }
+    }
     return n;
   }
 
@@ -279,7 +322,11 @@
 
   // entry フォームか（自動入力ボタンを出すか）の判定
   function hasEntryForm() {
-    return !!document.querySelector('input[name="kname1"], input[name="yname1"]');
+    // 基本情報ページ + 学校選択ウィザード + アンケートページのいずれか
+    return !!document.querySelector(
+      'input[name="kname1"], input[name="yname1"], input[name="gkbn"], input[name="dken"], ' +
+      'input[name="daicd"], input[name="gkbcd"], input[name="gkkcd"], input[name="s_brkbn"], input[name^="enq"]'
+    );
   }
 
   // ---- ページ内ボタン注入 ----------------------------------------------

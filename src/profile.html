@@ -92,16 +92,26 @@
     <!-- 学歴 -->
     <section id="tab-edu" class="panel hidden">
       <div class="grid2">
-        <label>大学名<input data-profile="university" placeholder="○○大学" /></label>
-        <label>学部<input data-profile="faculty" placeholder="経済学部" /></label>
-        <label>学科<input data-profile="department" placeholder="経済学科" /></label>
-        <label>　</label>
+        <label>学校区分
+          <select data-profile="schoolType">
+            <option value="">未設定</option>
+            <option>大学</option><option>大学院（修士）</option><option>大学院（博士）</option>
+            <option>短期大学</option><option>高等専門学校</option><option>専門学校</option>
+            <option>外国大学日本校</option><option>外国大学</option>
+          </select>
+        </label>
+        <label>大学所在地（都道府県）<select data-profile="uniPref" class="pref"></select></label>
+        <label>大学名<input data-profile="university" placeholder="北海道大学" /></label>
+        <label>文理<select data-profile="scienceType"><option value="">未設定</option><option>文系</option><option>理系</option></select></label>
+        <label>学部<input data-profile="faculty" placeholder="文学部" /></label>
+        <label>学科<input data-profile="department" placeholder="人文科学科" /></label>
         <label>卒業（見込み）年<select data-profile="gradYear" id="gradYear"></select></label>
         <div class="grid2 sub">
           <label>月<select data-profile="gradMonth" id="gradMonth"></select></label>
           <label>区分<select data-profile="gradKbn"><option value="0">卒業（修了）見込み</option><option value="1">卒業（修了）</option></select></label>
         </div>
       </div>
+      <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>⚡自動入力</b> が該当項目を自動で選びます（例：「北海道大学」「文学部」「人文科学科」）。</p>
     </section>
 
     <!-- 同期・機能設定 -->
