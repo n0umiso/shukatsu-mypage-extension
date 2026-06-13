@@ -424,6 +424,7 @@ async function saveModal() {
 function switchView(view) {
   document.querySelectorAll('.nav[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   for (const v of ['home', 'list', 'senko', 'deadlines']) $('#view-' + v).classList.toggle('hidden', v !== view);
+  if (location.hash.slice(1) !== view) location.hash = view;
 }
 
 // ---- 初期化 ----
@@ -442,7 +443,9 @@ function init() {
   $('#modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
   $('#pw-toggle').onclick = () => { const f = $('#f-pw'); f.type = f.type === 'password' ? 'text' : 'password'; };
   document.querySelectorAll('.nav[data-view]').forEach((b) => { b.onclick = () => switchView(b.dataset.view); });
-  $('#nav-options').onclick = () => chrome.runtime.openOptionsPage();
+  $('#nav-options').onclick = () => { location.href = 'profile.html'; };
+  const initial = (location.hash || '#home').slice(1);
+  if (['home', 'list', 'senko', 'deadlines'].includes(initial)) switchView(initial);
   $('#senko-progress').onclick = () => { senkoMode = 'progress'; renderSenko(); };
   $('#senko-board').onclick = () => { senkoMode = 'board'; renderSenko(); };
   $('#sync').onclick = async () => {

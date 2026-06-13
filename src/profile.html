@@ -6,6 +6,18 @@
   <link rel="stylesheet" href="profile.css" />
 </head>
 <body>
+  <div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><h1>就活マイページ</h1><p>ダッシュボード</p></div>
+    <nav>
+      <a class="nav" href="dashboard.html#home">🏠 ホーム</a>
+      <a class="nav" href="dashboard.html#list">📋 マイページ</a>
+      <a class="nav" href="dashboard.html#senko">✅ 選考管理</a>
+      <a class="nav" href="dashboard.html#deadlines">📅 締切</a>
+      <a class="nav active" href="profile.html">⚙ 情報・設定</a>
+    </nav>
+  </aside>
+  <div class="content">
   <header class="head">
     <h1>⚙ 情報入力・設定</h1>
     <div class="head-actions">
@@ -127,6 +139,8 @@
       <div class="warn">⚠️ パスワードを送信すると Google スプレッドシート上に平文で保存されます。不安な場合はオフに（端末内の保存は維持されます）。</div>
     </section>
   </main>
+  </div>
+  </div>
 
   <script type="module" src="profile.js"></script>
 </body>

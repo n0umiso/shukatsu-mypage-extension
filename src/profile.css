@@ -4,6 +4,15 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; color: var(--fg); background: var(--bg); font-size: 14px; }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 240px; flex-shrink: 0; background: #111827; color: #e5e7eb; display: flex; flex-direction: column; padding: 20px 14px; }
+.sidebar .brand h1 { font-size: 18px; margin: 0; color: #fff; }
+.sidebar .brand p { font-size: 12px; color: #9ca3af; margin: 2px 0 20px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+.sidebar .nav { text-decoration: none; color: #d1d5db; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+.sidebar .nav:hover { background: #1f2937; }
+.sidebar .nav.active { background: var(--accent); color: #fff; }
+.content { flex: 1; min-width: 0; }
 .head { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
 .head h1 { font-size: 18px; margin: 0; }
 .head-actions { display: flex; align-items: center; gap: 14px; }
