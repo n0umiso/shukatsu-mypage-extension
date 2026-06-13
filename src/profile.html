@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>情報入力・設定 | 就活マイページ</title>
+  <link rel="stylesheet" href="profile.css" />
+</head>
+<body>
+  <header class="head">
+    <h1>⚙ 情報入力・設定</h1>
+    <div class="head-actions">
+      <span id="saved" class="saved"></span>
+      <button id="save" class="primary">保存</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="basic">基本情報</button>
+    <button class="tab" data-tab="contact">連絡先・住所</button>
+    <button class="tab" data-tab="edu">学歴</button>
+    <button class="tab" data-tab="settings">同期・機能設定</button>
+  </nav>
+
+  <main class="wrap">
+    <p class="lead">ここに登録した情報を、対応サイトの登録フォームへ <b>⚡自動入力</b> ボタンで一括入力します。データは端末内（chrome.storage）に保存されます。</p>
+
+    <!-- 基本情報 -->
+    <section id="tab-basic" class="panel">
+      <div class="grid2">
+        <label>姓（漢字）<input data-profile="lastNameKanji" placeholder="双日" /></label>
+        <label>名（漢字）<input data-profile="firstNameKanji" placeholder="太郎" /></label>
+        <label>セイ（カナ）<input data-profile="lastNameKana" placeholder="ソウジツ" /></label>
+        <label>メイ（カナ）<input data-profile="firstNameKana" placeholder="タロウ" /></label>
+        <label>姓（ローマ字）<input data-profile="lastNameRoman" placeholder="Sojitz" /></label>
+        <label>名（ローマ字）<input data-profile="firstNameRoman" placeholder="Taro" /></label>
+        <label>性別
+          <select data-profile="gender"><option value="">未設定</option><option>男性</option><option>女性</option><option>回答しない</option></select>
+        </label>
+        <label>　</label>
+        <label>生年月日（年）<select data-profile="birthYear" id="birthYear"></select></label>
+        <div class="grid2 sub">
+          <label>月<select data-profile="birthMonth" id="birthMonth"></select></label>
+          <label>日<select data-profile="birthDay" id="birthDay"></select></label>
+        </div>
+        <label>メールアドレス<input data-profile="email" type="email" placeholder="taro@example.com" /></label>
+        <label>携帯メール（任意）<input data-profile="email2" type="email" placeholder="taro@docomo.ne.jp" /></label>
+      </div>
+    </section>
+
+    <!-- 連絡先・住所 -->
+    <section id="tab-contact" class="panel hidden">
+      <h2>現住所</h2>
+      <div class="grid2">
+        <div class="grid2 sub">
+          <label>郵便番号（前3桁）<input data-profile="curPostal1" maxlength="3" placeholder="100" /></label>
+          <label>（後4桁）<input data-profile="curPostal2" maxlength="4" placeholder="0001" /></label>
+        </div>
+        <label>都道府県<select data-profile="curPref" class="pref"></select></label>
+        <label>住所1（市区町村）<input data-profile="curAddr1" placeholder="千代田区丸の内1-1-1" /></label>
+        <label>住所2（建物名など）<input data-profile="curAddr2" placeholder="○○マンション101" /></label>
+        <div class="grid3 sub">
+          <label>電話<input data-profile="curTel1" placeholder="03" /></label>
+          <label>　<input data-profile="curTel2" placeholder="1234" /></label>
+          <label>　<input data-profile="curTel3" placeholder="5678" /></label>
+        </div>
+        <div class="grid3 sub">
+          <label>携帯<input data-profile="mobile1" placeholder="090" /></label>
+          <label>　<input data-profile="mobile2" placeholder="1234" /></label>
+          <label>　<input data-profile="mobile3" placeholder="5678" /></label>
+        </div>
+      </div>
+
+      <h2>帰省先住所
+        <label class="inline"><input type="checkbox" data-profile="homeSameAsCurrent" id="homeSame" /> 現住所と同じ</label>
+      </h2>
+      <div class="grid2" id="homeBlock">
+        <div class="grid2 sub">
+          <label>郵便番号（前3桁）<input data-profile="homePostal1" maxlength="3" /></label>
+          <label>（後4桁）<input data-profile="homePostal2" maxlength="4" /></label>
+        </div>
+        <label>都道府県<select data-profile="homePref" class="pref"></select></label>
+        <label>住所1<input data-profile="homeAddr1" /></label>
+        <label>住所2<input data-profile="homeAddr2" /></label>
+        <div class="grid3 sub">
+          <label>電話<input data-profile="homeTel1" /></label>
+          <label>　<input data-profile="homeTel2" /></label>
+          <label>　<input data-profile="homeTel3" /></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 学歴 -->
+    <section id="tab-edu" class="panel hidden">
+      <div class="grid2">
+        <label>大学名<input data-profile="university" placeholder="○○大学" /></label>
+        <label>学部<input data-profile="faculty" placeholder="経済学部" /></label>
+        <label>学科<input data-profile="department" placeholder="経済学科" /></label>
+        <label>　</label>
+        <label>卒業（見込み）年<select data-profile="gradYear" id="gradYear"></select></label>
+        <div class="grid2 sub">
+          <label>月<select data-profile="gradMonth" id="gradMonth"></select></label>
+          <label>区分<select data-profile="gradKbn"><option value="0">卒業（修了）見込み</option><option value="1">卒業（修了）</option></select></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 同期・機能設定 -->
+    <section id="tab-settings" class="panel hidden">
+      <label>GAS Web アプリ URL
+        <input data-setting="gasUrl" type="url" placeholder="https://script.google.com/macros/s/XXXX/exec" />
+      </label>
+      <label class="check"><input type="checkbox" data-setting="autoSync" /> 保存・取り込みのたびに自動でスプレッドシートへ同期</label>
+      <label class="check"><input type="checkbox" data-setting="syncPassword" /> パスワードもスプレッドシートへ送信する</label>
+      <label class="check"><input type="checkbox" data-setting="showAutofillButton" /> 対応サイトに「⚡自動入力」ボタンを表示する</label>
+      <div class="warn">⚠️ パスワードを送信すると Google スプレッドシート上に平文で保存されます。不安な場合はオフに（端末内の保存は維持されます）。</div>
+    </section>
+  </main>
+
+  <script type="module" src="profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>就活マイページ ダッシュボード</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>就活マイページ</h1>
+      <p>ダッシュボード</p>
+    </div>
+    <nav>
+      <button class="nav active" data-view="list">📋 マイページ一覧</button>
+      <button class="nav" data-view="deadlines">📅 締切カレンダー</button>
+      <button class="nav" id="nav-options">⚙ 情報入力・設定</button>
+    </nav>
+    <div class="sync-box">
+      <button id="sync">⟳ スプレッドシート同期</button>
+      <p id="sync-info"></p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- 一覧ビュー -->
+    <section id="view-list">
+      <div class="page-head">
+        <h2>📄 マイページ一覧</h2>
+        <button id="add" class="primary">＋ マイページを追加</button>
+      </div>
+      <p class="lead">ログインを検知すると自動で追加されます。カードの企業名／URLから各マイページへ移動できます。</p>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="マイページを検索（企業名・ID・URL）" />
+        <select id="filter-industry"><option value="">すべての業界</option></select>
+        <select id="sort">
+          <option value="updated">更新順</option>
+          <option value="industry">業界順</option>
+          <option value="name">企業名順</option>
+        </select>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <!-- 締切ビュー -->
+    <section id="view-deadlines" class="hidden">
+      <div class="page-head"><h2>📅 締切カレンダー</h2></div>
+      <p class="lead">登録された締切を日付順に表示します。</p>
+      <ul id="deadline-list" class="deadline-list"></ul>
+    </section>
+  </main>
+
+  <!-- 追加／編集モーダル -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="modal-title">マイページを追加</h3>
+      <label>企業名 <input id="f-company" type="text" placeholder="例: 双日グループ" /></label>
+      <label>業界 <select id="f-industry"></select></label>
+      <label>マイページURL <input id="f-url" type="url" placeholder="https://..." /></label>
+      <label>ログインID <input id="f-id" type="text" /></label>
+      <label>パスワード
+        <span class="pw-row"><input id="f-pw" type="password" /><button id="pw-toggle" type="button" class="mini">表示</button></span>
+      </label>
+      <label>締切（1行1件 / 例: ES:2026/06/30）<textarea id="f-deadlines" rows="3"></textarea></label>
+      <label>ステータス
+        <select id="f-status">
+          <option value="">未設定</option>
+          <option>登録済</option><option>ES提出済</option><option>Webテスト</option>
+          <option>面接</option><option>内定</option><option>お祈り</option><option>辞退</option>
+        </select>
+      </label>
+      <label>メモ <textarea id="f-memo" rows="2"></textarea></label>
+      <div class="modal-actions">
+        <button id="save" class="primary">保存</button>
+        <button id="cancel" class="ghost">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

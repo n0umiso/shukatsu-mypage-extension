@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "就活マイページ マネージャー",
+  "version": "0.1.0",
+  "description": "就活マイページのID・締切を管理し、Googleスプレッドシートへ自動同期します。",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "就活マイページ マネージャー"
+  },
+  "options_page": "src/profile.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

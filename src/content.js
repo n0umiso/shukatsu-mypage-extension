@@ -1,0 +1,356 @@
+// 就活マイページ上で動く content script。
+// 1) ログイン時に ID/PW を自動キャプチャ（submit / ボタンclick / Enter を網羅）
+// 2) ページ内から締切らしき日付を抽出
+// 3) popup からの「今のページを取り込む」要求に応答
+
+(() => {
+  'use strict';
+
+  // ---- サイト別ルール ---------------------------------------------------
+  // i-web 等、サイト固有のフィールド名・キー構造に対応する。
+  const SITE_RULES = [
+    {
+      // ヒューマネージ i-web (mypage.XXXX.i-webs.jp / *.i-webs.jp)
+      name: 'i-web',
+      test: () =>
+        /i-webs?\.jp$/.test(location.hostname) ||
+        !!document.querySelector('input[name="gksid"], input[name="gkspw"]'),
+      idSelector: '#gksid, input[name="gksid"]',
+      pwSelector: 'input[name="gkspw"]',
+    },
+  ];
+
+  function activeRule() {
+    return SITE_RULES.find((r) => {
+      try {
+        return r.test();
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  // ---- 重複判定キー -----------------------------------------------------
+  // i-web は同一ホストに複数企業が先頭パスで同居するため、host + 先頭パスをキーにする。
+  function siteKey() {
+    const seg = location.pathname.split('/').filter(Boolean)[0] || '';
+    return location.hostname + (seg ? '/' + seg : '');
+  }
+
+  // 全角スペースも除去する trim
+  function trimJp(s) {
+    return (s || '').replace(/^[\s　]+|[\s　]+$/g, '');
+  }
+
+  // ---- 締切抽出 ---------------------------------------------------------
+  const DEADLINE_KEYWORDS = [
+    '締切', '〆切', '〆', '締め切り', '期限', '期日', 'まで',
+    'エントリー', 'ES', 'エントリーシート', '提出', '応募',
+    '説明会', 'セミナー', '面接', '選考', 'テスト', 'Webテスト', '適性検査',
+  ];
+
+  // 2026/6/13・2026年6月13日・6/13・6月13日 などにマッチ
+  const DATE_RE =
+    /(\d{4})\s*[\/年\-.]\s*(\d{1,2})\s*[\/月\-.]\s*(\d{1,2})\s*日?|(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?/g;
+
+  function normalizeDate(m) {
+    if (m[1]) {
+      const y = m[1], mo = String(m[2]).padStart(2, '0'), d = String(m[3]).padStart(2, '0');
+      return `${y}/${mo}/${d}`;
+    }
+    const y = new Date().getFullYear();
+    const mo = String(m[4]).padStart(2, '0'), d = String(m[5]).padStart(2, '0');
+    return `${y}/${mo}/${d}`;
+  }
+
+  function guessType(line) {
+    if (/エントリーシート|ES|提出|応募/.test(line)) return 'ES/エントリー';
+    if (/説明会|セミナー/.test(line)) return '説明会';
+    if (/面接/.test(line)) return '面接';
+    if (/テスト|適性|Webテスト/.test(line)) return 'テスト';
+    if (/選考/.test(line)) return '選考';
+    if (/エントリー/.test(line)) return 'エントリー';
+    return '締切';
+  }
+
+  function extractDeadlines() {
+    const text = document.body ? document.body.innerText : '';
+    const lines = text.split(/\n+/);
+    const found = [];
+    const seen = new Set();
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line.length > 120) continue;
+      if (!DEADLINE_KEYWORDS.some((k) => line.includes(k))) continue;
+      let m;
+      DATE_RE.lastIndex = 0;
+      while ((m = DATE_RE.exec(line)) !== null) {
+        const date = normalizeDate(m);
+        const type = guessType(line);
+        const key = `${type}|${date}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({ type, date });
+      }
+    }
+    return found;
+  }
+
+  // ---- ログイン情報の推定 ----------------------------------------------
+  function findCredentials() {
+    const rule = activeRule();
+
+    // パスワード欄: サイトルール優先、無ければ汎用
+    const pw =
+      (rule && document.querySelector(rule.pwSelector)) ||
+      document.querySelector('input[type="password"]');
+    if (!pw) return null;
+
+    // ID欄: サイトルール優先
+    let idInput = rule && document.querySelector(rule.idSelector);
+    if (!idInput) {
+      // 汎用: password より前にある text/email/tel 入力の直前のもの
+      const inputs = Array.from(
+        document.querySelectorAll(
+          'input[type="text"], input[type="email"], input[type="tel"], input:not([type])'
+        )
+      );
+      for (const inp of inputs) {
+        if (pw.compareDocumentPosition(inp) & Node.DOCUMENT_POSITION_PRECEDING) {
+          idInput = inp;
+        }
+      }
+    }
+    return {
+      loginId: idInput ? idInput.value : '',
+      password: pw.value || '',
+    };
+  }
+
+  function companyGuess() {
+    let t = trimJp(document.title);
+    t = t.replace(/[|｜<>‹›«».].*$/, ''); // 区切り以降を捨てる（｜ など）
+    t = t.replace(/(マイページ|ログイン|採用|エントリー|新卒|MyPage|Login).*/gi, '');
+    t = trimJp(t);
+    return t || location.hostname;
+  }
+
+  function buildPayload(creds) {
+    return {
+      host: siteKey(),
+      mypageUrl: location.href,
+      companyName: companyGuess(),
+      loginId: creds ? creds.loginId : '',
+      password: creds ? creds.password : '',
+      deadlines: extractDeadlines(),
+    };
+  }
+
+  // ---- 自動キャプチャ（送信方法を問わず拾う） --------------------------
+  let lastSentAt = 0;
+  function captureCredentials() {
+    const creds = findCredentials();
+    if (!creds || !creds.password) return; // PW未入力なら何もしない
+    const now = Date.now();
+    if (now - lastSentAt < 1000) return; // 二重送信防止
+    lastSentAt = now;
+    try {
+      chrome.runtime.sendMessage({ type: 'CAPTURE', payload: buildPayload(creds) });
+    } catch (_) {
+      /* 拡張がリロード直後などは無視 */
+    }
+  }
+
+  // 通常の form submit
+  document.addEventListener('submit', captureCredentials, true);
+
+  // i-web のように onclick→form.submit() でログインするケースを click で拾う
+  document.addEventListener(
+    'click',
+    (ev) => {
+      const t =
+        ev.target.closest &&
+        ev.target.closest('button, input[type="button"], input[type="submit"], a');
+      if (!t) return;
+      const hint = `${t.id} ${t.className} ${t.value || ''} ${t.textContent || ''}`.toLowerCase();
+      if (/login|ログイン|sign\s?in|送信|submit/.test(hint)) {
+        captureCredentials();
+      }
+    },
+    true
+  );
+
+  // パスワード欄で Enter
+  document.addEventListener(
+    'keydown',
+    (ev) => {
+      if (ev.key === 'Enter' && ev.target && ev.target.type === 'password') {
+        captureCredentials();
+      }
+    },
+    true
+  );
+
+  // ---- popup からの手動取り込み要求 ------------------------------------
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === 'CAPTURE_NOW') {
+      const creds = findCredentials();
+      sendResponse({ ok: true, payload: buildPayload(creds) });
+    }
+    return true;
+  });
+
+  // =====================================================================
+  //  自動入力（プロフィール → フォーム）
+  // =====================================================================
+  const PREFS = [
+    '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+    '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+    '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+    '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+    '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+    '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+    '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+  ];
+  function prefCode(name) {
+    const i = PREFS.indexOf((name || '').trim());
+    return i < 0 ? '' : String(i + 1).padStart(2, '0');
+  }
+  const pad2 = (v) => (v === '' || v == null ? '' : String(v).padStart(2, '0'));
+
+  // 1つの name に値を入れ、input/change を発火（サイト側の onchange を起動）
+  function setField(name, value) {
+    if (value == null || value === '') return false;
+    const els = document.getElementsByName(name);
+    let touched = false;
+    for (const el of els) {
+      if (el.type === 'checkbox') el.checked = !!value;
+      else el.value = String(value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      touched = true;
+    }
+    return touched;
+  }
+
+  function splitEmail(email) {
+    const at = (email || '').indexOf('@');
+    return at > 0 ? [email.slice(0, at), email.slice(at + 1)] : ['', ''];
+  }
+
+  // i-web 専用マッピング
+  function autofillIweb(p) {
+    const map = {
+      kname1: p.lastNameKanji, kname2: p.firstNameKanji,
+      yname1: p.lastNameKana, yname2: p.firstNameKana,
+      ybirth: p.birthYear, mbirth: pad2(p.birthMonth), dbirth: pad2(p.birthDay),
+      syear: p.gradYear, smonth: pad2(p.gradMonth), shikbn: p.gradKbn,
+      // 現住所
+      gyubin1: p.curPostal1, gyubin2: p.curPostal2, gken: prefCode(p.curPref),
+      gadrs1: p.curAddr1, gadrs2: p.curAddr2,
+      gtel1: p.curTel1, gtel2: p.curTel2, gtel3: p.curTel3,
+      kttel1: p.mobile1, kttel2: p.mobile2, kttel3: p.mobile3,
+    };
+    // 帰省先（現住所と同じならコピー）
+    const same = p.homeSameAsCurrent;
+    map.kyubin1 = same ? p.curPostal1 : p.homePostal1;
+    map.kyubin2 = same ? p.curPostal2 : p.homePostal2;
+    map.kken = prefCode(same ? p.curPref : p.homePref);
+    map.kadrs1 = same ? p.curAddr1 : p.homeAddr1;
+    map.kadrs2 = same ? p.curAddr2 : p.homeAddr2;
+    map.ktel1 = same ? p.curTel1 : p.homeTel1;
+    map.ktel2 = same ? p.curTel2 : p.homeTel2;
+    map.ktel3 = same ? p.curTel3 : p.homeTel3;
+    // メール（本文 + 確認欄に同じ値）
+    if (p.email) {
+      const [a, d] = splitEmail(p.email);
+      map.account1 = a; map.domain1 = d; map.account2 = a; map.domain2 = d;
+    }
+    if (p.email2) {
+      const [a, d] = splitEmail(p.email2);
+      map.account3 = a; map.domain3 = d; map.account4 = a; map.domain4 = d;
+    }
+    let n = 0;
+    for (const [name, val] of Object.entries(map)) if (setField(name, val)) n++;
+    return n;
+  }
+
+  const AUTOFILLERS = { 'i-web': autofillIweb };
+
+  // entry フォームか（自動入力ボタンを出すか）の判定
+  function hasEntryForm() {
+    return !!document.querySelector('input[name="kname1"], input[name="yname1"]');
+  }
+
+  // ---- ページ内ボタン注入 ----------------------------------------------
+  function toast(text) {
+    const t = document.createElement('div');
+    t.textContent = text;
+    t.style.cssText =
+      'position:fixed;bottom:90px;right:24px;z-index:2147483647;background:#111827;color:#fff;' +
+      'padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);' +
+      'font-family:-apple-system,sans-serif;opacity:0;transition:opacity .2s;';
+    document.body.appendChild(t);
+    requestAnimationFrame(() => (t.style.opacity = '1'));
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2600);
+  }
+
+  function makeFab(label, bg, onClick) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText =
+      `display:block;margin-top:10px;background:${bg};color:#fff;border:none;border-radius:24px;` +
+      'padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);' +
+      'font-family:-apple-system,sans-serif;';
+    b.onclick = onClick;
+    return b;
+  }
+
+  async function injectButtons(rule) {
+    if (document.getElementById('amp-fab')) return;
+    const settings = await new Promise((r) =>
+      chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (res) => r((res && res.settings) || {}))
+    );
+
+    const box = document.createElement('div');
+    box.id = 'amp-fab';
+    box.style.cssText =
+      'position:fixed;bottom:24px;right:24px;z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;';
+
+    // 自動入力（entry フォームがあり、対応サイトで、設定ONのとき）
+    if (settings.showAutofillButton !== false && AUTOFILLERS[rule.name] && hasEntryForm()) {
+      box.appendChild(
+        makeFab('⚡ 自動入力', '#16a34a', async () => {
+          const profile = await new Promise((r) =>
+            chrome.runtime.sendMessage({ type: 'GET_PROFILE' }, (res) => r((res && res.profile) || {}))
+          );
+          if (!profile || !Object.keys(profile).length) {
+            toast('プロフィール未登録です。拡張機能の「情報入力・設定」で登録してください');
+            return;
+          }
+          const n = AUTOFILLERS[rule.name](profile);
+          toast(`${n}項目を自動入力しました`);
+        })
+      );
+    }
+
+    // 締切抽出（このページの締切を拾って保存）
+    box.appendChild(
+      makeFab('📅 締切抽出', '#ea580c', () => {
+        const payload = buildPayload(null);
+        const cnt = payload.deadlines.length;
+        chrome.runtime.sendMessage({ type: 'CAPTURE', payload });
+        toast(cnt ? `締切${cnt}件を抽出・保存しました` : '締切は見つかりませんでした（ページは保存）');
+      })
+    );
+
+    document.body.appendChild(box);
+  }
+
+  // 対応サイトならボタンを出す
+  const rule = activeRule();
+  if (rule) {
+    if (document.body) injectButtons(rule);
+    else window.addEventListener('DOMContentLoaded', () => injectButtons(rule));
+  }
+})();

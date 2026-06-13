@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+
+# 一時ファイル
+/tmp/
+*.log
+
+# 個人データのエクスポート（万一置いた場合の流出防止）
+*.local.json
+secrets.*

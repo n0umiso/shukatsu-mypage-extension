@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>就活マイページ</h1>
+    <div class="actions">
+      <button id="dashboard" title="一覧をタブで開く">📋 一覧</button>
+      <button id="capture" title="表示中のページを取り込む">＋ 今のページ</button>
+      <button id="sync" title="スプレッドシートへ同期">⟳ 同期</button>
+      <button id="opts" title="設定">⚙</button>
+    </div>
+  </header>
+
+  <div id="status" class="status"></div>
+
+  <ul id="list" class="list"></ul>
+
+  <!-- 編集フォーム（モーダル風） -->
+  <div id="editor" class="editor hidden">
+    <h2 id="editor-title">編集</h2>
+    <label>企業名 <input id="f-company" type="text" /></label>
+    <label>業界 <select id="f-industry"></select></label>
+    <label>マイページURL <input id="f-url" type="text" /></label>
+    <label>ログインID <input id="f-id" type="text" /></label>
+    <label>パスワード
+      <span class="pw-row">
+        <input id="f-pw" type="password" />
+        <button id="pw-toggle" type="button" class="mini">表示</button>
+      </span>
+    </label>
+    <label>締切（1行に1件 / 例: ES:2026/06/30）
+      <textarea id="f-deadlines" rows="3"></textarea>
+    </label>
+    <label>ステータス
+      <select id="f-status">
+        <option value="">未設定</option>
+        <option>登録済</option>
+        <option>ES提出済</option>
+        <option>Webテスト</option>
+        <option>面接</option>
+        <option>内定</option>
+        <option>お祈り</option>
+        <option>辞退</option>
+      </select>
+    </label>
+    <label>メモ <textarea id="f-memo" rows="2"></textarea></label>
+    <div class="editor-actions">
+      <button id="save">保存</button>
+      <button id="cancel" class="ghost">キャンセル</button>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

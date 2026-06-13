@@ -1,0 +1,91 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+  --chip: #eff6ff;
+}
+* { box-sizing: border-box; }
+body {
+  width: 380px;
+  max-height: 560px;
+  margin: 0;
+  font-family: -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+h1 { font-size: 14px; margin: 0; }
+.actions { display: flex; gap: 4px; }
+button {
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+button:hover { background: #f3f4f6; }
+#save, #sync { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.ghost { background: transparent; }
+.mini { padding: 3px 6px; font-size: 11px; }
+.status {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 0;
+}
+.status.err { color: var(--danger); }
+.status.ok { color: #059669; }
+.status:empty { display: none; }
+
+.list { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 420px; }
+.item { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.item-name { font-weight: 600; }
+.item-status { font-size: 11px; color: var(--accent); background: var(--chip); padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
+.item-sub { color: var(--muted); font-size: 11px; margin-top: 3px; word-break: break-all; }
+.item-deadlines { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.dl { font-size: 11px; background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; }
+.dl.soon { background: #fee2e2; color: #991b1b; }
+.item-actions { margin-top: 6px; display: flex; gap: 6px; }
+.item-actions button { padding: 3px 8px; font-size: 11px; }
+.copy { color: var(--accent); }
+.del { color: var(--danger); }
+
+.editor {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  padding: 12px;
+  overflow-y: auto;
+}
+.editor.hidden { display: none; }
+.editor h2 { font-size: 14px; margin: 0 0 8px; }
+.editor label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.editor input, .editor textarea, .editor select {
+  width: 100%;
+  margin-top: 3px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.pw-row { display: flex; gap: 6px; align-items: center; }
+.pw-row input { flex: 1; }
+.editor-actions { display: flex; gap: 8px; margin-top: 8px; }
+.empty { padding: 24px 12px; text-align: center; color: var(--muted); }
