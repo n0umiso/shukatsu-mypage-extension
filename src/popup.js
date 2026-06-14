@@ -103,7 +103,9 @@ async function captureCurrent() {
   if (!resp?.payload) return setStatus('取り込みに失敗しました', 'err');
   const res = await send({ type: 'CAPTURE', payload: resp.payload });
   await refresh();
-  setStatus(res.isNew ? '新規に保存しました' : '更新しました', 'ok');
+  const base = res.isNew ? '新規に保存しました' : '更新しました';
+  const syncNote = res.sync?.ok && !res.sync?.skipped ? '（同期済）' : '';
+  setStatus(base + syncNote, 'ok');
 }
 
 async function refresh() {
@@ -118,8 +120,19 @@ async function refresh() {
 $('#sync').onclick = async () => {
   setStatus('同期中…');
   const res = await send({ type: 'SYNC_ALL' });
-  if (res.sync?.ok) setStatus(`同期しました（${res.sync.count}件）`, 'ok');
-  else setStatus(`同期失敗: ${res.sync?.error || ''}`, 'err');
+  if (!res || !res.sync) {
+    setStatus('同期に失敗しました（応答なし）', 'err');
+  } else if (res.sync.skipped) {
+    setStatus('自動同期はOFFです', '');
+  } else if (res.sync.ok) {
+    setStatus(`同期しました（${res.sync.count}件）`, 'ok');
+  } else if ((res.sync.error || '').includes('未設定')) {
+    setStatus('GAS URLが未設定です（設定画面へ）', 'err');
+  } else if ((res.sync.error || '').includes('unauthorized')) {
+    setStatus('トークンが一致しません', 'err');
+  } else {
+    setStatus(`同期失敗: ${res.sync.error || '不明なエラー'}`, 'err');
+  }
 };
 $('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') }); window.close(); };
 $('#dashboard').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') }); window.close(); };
