@@ -5,6 +5,8 @@
 
 (() => {
   'use strict';
+  if (window.__shukatsuMypageContentLoaded) return;
+  window.__shukatsuMypageContentLoaded = true;
 
   // ---- サイト別ルール ---------------------------------------------------
   // i-web 等、サイト固有のフィールド名・キー構造に対応する。
@@ -606,8 +608,10 @@
       'background:#fff;border-radius:14px;padding:20px 24px;max-width:380px;width:90%;' +
       'box-shadow:0 12px 40px rgba(0,0,0,.25);max-height:70vh;display:flex;flex-direction:column;';
 
-    card.innerHTML = `<div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#23262b;">
-      締切を選択（${deadlines.length}件）</div>`;
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:16px;font-weight:700;margin-bottom:14px;color:#23262b;';
+    title.textContent = `締切を選択（${deadlines.length}件）`;
+    card.appendChild(title);
 
     const list = document.createElement('div');
     list.style.cssText = 'overflow-y:auto;flex:1;';
@@ -616,10 +620,24 @@
       const row = document.createElement('label');
       row.style.cssText =
         'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;color:#23262b;';
-      row.innerHTML =
-        `<input type="checkbox" checked data-dl-idx="${i}" style="width:18px;height:18px;accent-color:#c76b4a;">` +
-        `<span style="flex:1"><b>${d.label || d.type}</b></span>` +
-        `<span style="color:#6e7178;font-size:13px;">${d.date}</span>`;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.dataset.dlIdx = i;
+      cb.style.cssText = 'width:18px;height:18px;accent-color:#c76b4a;';
+      row.appendChild(cb);
+
+      const label = document.createElement('span');
+      label.style.flex = '1';
+      const bold = document.createElement('b');
+      bold.textContent = d.label || d.type || '締切';
+      label.appendChild(bold);
+      row.appendChild(label);
+
+      const date = document.createElement('span');
+      date.style.cssText = 'color:#6e7178;font-size:13px;';
+      date.textContent = d.date;
+      row.appendChild(date);
       list.appendChild(row);
     }
     card.appendChild(list);

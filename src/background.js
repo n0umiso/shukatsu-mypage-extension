@@ -111,6 +111,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case 'TOGGLE_DEADLINE': {
           const entries = await getEntries();
           const entry = entries[msg.entryId];
+          let changed = false;
           if (entry?.deadlines) {
             const dl = entry.deadlines.find(
               (d) => d.date === msg.date && (d.type || '') === (msg.dlType || '')
@@ -118,9 +119,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             if (dl) {
               dl.done = !dl.done;
               await saveEntry(entry);
+              changed = true;
             }
           }
-          sendResponse({ ok: true });
+          const sync = changed ? await maybeSync() : { ok: true, skipped: true };
+          sendResponse({ ok: true, sync });
           break;
         }
 

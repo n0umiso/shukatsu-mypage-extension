@@ -75,7 +75,7 @@ async function load() {
   if (!profile || !settings) {
     const data = await chrome.storage.local.get(['profile', 'settings']);
     profile = profile || data.profile || {};
-    settings = settings || { ...{ gasUrl: '', autoSync: true, syncPassword: true, showAutofillButton: true, syncToken: '' }, ...data.settings };
+    settings = settings || { ...{ gasUrl: '', autoSync: true, syncPassword: false, showAutofillButton: true, syncToken: '' }, ...data.settings };
   }
 
   for (const el of document.querySelectorAll('[data-profile]')) {

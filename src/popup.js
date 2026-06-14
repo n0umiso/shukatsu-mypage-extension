@@ -15,6 +15,19 @@ function setStatus(text, kind = '') {
   if (text) setTimeout(() => { if (statusEl.textContent === text) statusEl.textContent = ''; }, 3500);
 }
 
+async function sendToActiveTab(msg) {
+  if (!activeTab?.id) throw new Error('no active tab');
+  try {
+    return await chrome.tabs.sendMessage(activeTab.id, msg);
+  } catch {
+    await chrome.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      files: ['src/content.js'],
+    });
+    return chrome.tabs.sendMessage(activeTab.id, msg);
+  }
+}
+
 async function openLogin(e) {
   if (!e.mypageUrl) return;
   await send({ type: 'PENDING_LOGIN', host: e.host });
@@ -245,7 +258,7 @@ function showDeadlinePicker(deadlines, payload) {
 async function extractDeadlines() {
   if (!activeTab?.id) return setStatus('タブが取得できません', 'err');
   let resp;
-  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'CAPTURE_NOW' }); }
+  try { resp = await sendToActiveTab({ type: 'CAPTURE_NOW' }); }
   catch { return setStatus('このページからは抽出できません', 'err'); }
   if (!resp?.payload) return setStatus('抽出に失敗しました', 'err');
   showDeadlinePicker(resp.payload.deadlines || [], resp.payload);
@@ -254,7 +267,7 @@ async function extractDeadlines() {
 async function captureCurrent() {
   if (!activeTab?.id) return;
   let resp;
-  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'CAPTURE_NOW' }); }
+  try { resp = await sendToActiveTab({ type: 'CAPTURE_NOW' }); }
   catch { return setStatus('このページからは取り込めません', 'err'); }
   if (!resp?.payload) return setStatus('取り込みに失敗しました', 'err');
   const res = await send({ type: 'CAPTURE', payload: resp.payload });
@@ -301,7 +314,7 @@ $('#autofill').onclick = async () => {
     return;
   }
   let resp;
-  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'AUTOFILL_NOW', profile }); }
+  try { resp = await sendToActiveTab({ type: 'AUTOFILL_NOW', profile }); }
   catch { return setStatus('このページでは自動入力できません', 'err'); }
   if (!resp?.ok) {
     if (resp?.error === 'no_form') setStatus('入力フォームが見つかりません', 'err');
