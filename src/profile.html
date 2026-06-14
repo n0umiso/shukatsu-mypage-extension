@@ -133,6 +133,9 @@
       <label>GAS Web アプリ URL
         <input data-setting="gasUrl" type="url" placeholder="https://script.google.com/macros/s/XXXX/exec" />
       </label>
+      <label>同期トークン（GAS 側のスクリプトプロパティ SYNC_TOKEN と同じ値）
+        <input data-setting="syncToken" type="password" placeholder="任意の文字列（空なら認証なし）" />
+      </label>
       <label class="check"><input type="checkbox" data-setting="autoSync" /> 保存・取り込みのたびに自動でスプレッドシートへ同期</label>
       <label class="check"><input type="checkbox" data-setting="syncPassword" /> パスワードもスプレッドシートへ送信する</label>
       <label class="check"><input type="checkbox" data-setting="showAutofillButton" /> 対応サイトに「自動入力」ボタンを表示する</label>

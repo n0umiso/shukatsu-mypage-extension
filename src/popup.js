@@ -1,6 +1,7 @@
 // ツールバーのポップアップ。素早い起動に特化（編集・全管理はダッシュボード）。
 import { stageLabel } from './lib/stages.js';
 import { icon, applyIcons } from './lib/icons.js';
+import { daysUntil, faviconUrl, whenColor, whenText, siteKeyFromUrl } from './lib/utils.js';
 
 const $ = (s) => document.querySelector(s);
 const statusEl = $('#status');
@@ -8,33 +9,6 @@ const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
 
 let entries = [];
 let activeTab = null;
-
-// ---- ユーティリティ ----
-function siteKey(url) {
-  try {
-    const u = new URL(url);
-    const seg = u.pathname.split('/').filter(Boolean)[0] || '';
-    return u.hostname + (seg ? '/' + seg : '');
-  } catch { return ''; }
-}
-function daysUntil(dateStr) {
-  const d = new Date(String(dateStr).replace(/\//g, '-'));
-  if (isNaN(d)) return null;
-  return Math.ceil((d - new Date().setHours(0, 0, 0, 0)) / 86400000);
-}
-function faviconUrl(url) {
-  try { return `https://www.google.com/s2/favicons?sz=64&domain=${new URL(url).hostname}`; }
-  catch { return ''; }
-}
-function whenColor(n) {
-  if (n === null) return '#9ca3af';
-  if (n <= 2) return '#dc2626';
-  if (n <= 7) return '#b45309';
-  return '#223049';
-}
-function whenText(n) {
-  return n === null ? '' : n < 0 ? '終了' : n === 0 ? '今日' : `あと${n}日`;
-}
 function setStatus(text, kind = '') {
   statusEl.textContent = text;
   statusEl.className = `status ${kind}`;
@@ -64,7 +38,7 @@ function logoEl(e) {
 
 // ---- 現在のページ ----
 function renderCurrent() {
-  const key = siteKey(activeTab?.url || '');
+  const key = siteKeyFromUrl(activeTab?.url || '');
   const cur = entries.find((e) => e.host === key);
   const sec = $('#current');
   if (!cur) { sec.classList.add('hidden'); return; }

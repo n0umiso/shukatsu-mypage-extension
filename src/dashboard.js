@@ -1,6 +1,7 @@
 // 全画面ダッシュボード。ホーム / マイページ / 選考管理 / 締切 / 設定。
 import { STAGES, ALL_STATES, stageProgress, stageLabel, isActive, isOutcome } from './lib/stages.js';
 import { icon, applyIcons } from './lib/icons.js';
+import { daysUntil, faviconUrl, whenColor, whenText } from './lib/utils.js';
 
 const INDUSTRIES = [
   '業界未設定', 'メーカー', '商社', '金融', 'コンサル', 'IT・通信',
@@ -16,17 +17,6 @@ let editingHost = '';
 let senkoMode = 'progress';
 
 const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
-
-// ---- ユーティリティ ----
-function daysUntil(dateStr) {
-  const d = new Date(String(dateStr).replace(/\//g, '-'));
-  if (isNaN(d)) return null;
-  return Math.ceil((d - new Date().setHours(0, 0, 0, 0)) / 86400000);
-}
-function faviconUrl(url) {
-  try { return `https://www.google.com/s2/favicons?sz=64&domain=${new URL(url).hostname}`; }
-  catch { return ''; }
-}
 const AVATAR_COLORS = ['#223049', '#c76b4a', '#5a6b7b', '#6e7c5e', '#8a6d5a', '#4e6374', '#7a5c6e'];
 function avatarColor(name) {
   let h = 0;
@@ -53,16 +43,6 @@ function whenClass(n) {
   if (n <= 2) return 'danger';
   if (n <= 7) return 'warn';
   return 'muted';
-}
-function whenColor(n) {
-  if (n === null) return '#9ca3af';
-  if (n <= 2) return '#dc2626';
-  if (n <= 7) return '#b45309';
-  return '#223049';
-}
-function whenText(n) {
-  if (n === null) return '';
-  return n < 0 ? '終了' : n === 0 ? '今日' : `あと${n}日`;
 }
 
 // ---- ログイン（開く＋自動入力の予約） ----
