@@ -296,20 +296,136 @@
     const knownNames = new Set(Object.keys(map));
     const textRules = [
       { re: /(出身)?高校(名|学校名)?|出身校/, val: p.highSchool },
+      { re: /大学名|大学院名|学校名/, val: p.university },
+      { re: /学部/, val: p.faculty },
+      { re: /学科|専攻|コース/, val: p.department },
     ];
+    const fire = (el) => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
     for (const el of document.querySelectorAll('input[type="text"], textarea')) {
-      if (el.value || (el.name && knownNames.has(el.name))) continue; // 既入力/既知欄はスキップ
+      if (el.value || (el.name && knownNames.has(el.name))) continue;
       const q = clean(questionText(el));
       for (const r of textRules) {
         if (r.val && r.re.test(q)) {
           el.value = r.val;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
+          fire(el);
           n++;
           break;
         }
       }
     }
+
+    // --- enq: 質問文ベースの汎用自動入力 ---
+    n += fillEnqFields(p, knownNames);
+
+    return n;
+  }
+
+  // enq フィールド (企業固有の質問票) を質問文から推定して自動入力
+  function fillEnqFields(p, knownNames) {
+    let n = 0;
+    const fire = (el) => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // 学歴タイムライン計算
+    const gradY = parseInt(p.gradYear) || 0;
+    const isGrad = (p.schoolType || '').includes('大学院');
+    const uniLen = isGrad ? 2 : (p.schoolType || '').includes('短期') ? 2 : 4;
+    const uniEnterY = gradY > 0 ? gradY - uniLen : 0;
+    const hsGradY = uniEnterY > 0 ? uniEnterY : 0;
+    const hsEnterY = hsGradY > 0 ? hsGradY - 3 : 0;
+
+    // 近辺のテキストからセクションのキーワードを取得
+    function sectionContext(el) {
+      const texts = [];
+      const row = el.closest('tr, dd, li, div.form-group, fieldset');
+      if (row) {
+        texts.push(row.textContent);
+        let prev = row.previousElementSibling;
+        for (let i = 0; i < 5 && prev; i++) {
+          texts.push(prev.textContent);
+          prev = prev.previousElementSibling;
+        }
+      }
+      const parent = row?.parentElement?.closest('table, fieldset, section, div');
+      if (parent) {
+        const h = parent.querySelector('h2, h3, h4, caption, legend, th[colspan]');
+        if (h) texts.push(h.textContent);
+      }
+      return clean(texts.join(' '));
+    }
+
+    // 1. ラジオグループ (学校区分・学年)
+    const radioMap = {};
+    for (const r of document.querySelectorAll('input[type="radio"]')) {
+      if (!r.name || knownNames.has(r.name)) continue;
+      (radioMap[r.name] = radioMap[r.name] || []).push(r);
+    }
+    for (const [, radios] of Object.entries(radioMap)) {
+      if (radios.some((r) => r.checked)) continue;
+      const q = sectionContext(radios[0]);
+
+      if (p.schoolType && /学校|在学|課程|所属/.test(q)) {
+        const target = isGrad ? '大学院' : '大学';
+        const hit = radios.find((r) => clean(radioLabelText(r)) === target) ||
+                    radios.find((r) => clean(radioLabelText(r)).includes(target));
+        if (hit) { hit.click(); n++; continue; }
+      }
+
+      if (gradY > 0 && /学年|年次|年生/.test(q)) {
+        const now = new Date();
+        const acadY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+        const yr = acadY - uniEnterY + 1;
+        if (yr >= 1 && yr <= 6) {
+          const hit = radios.find((r) => clean(radioLabelText(r)).startsWith(`${yr}年`));
+          if (hit) { hit.click(); n++; continue; }
+        }
+      }
+    }
+
+    // 2. 日付セレクトグループ (name[0], name[1], ...)
+    const selGroups = {};
+    for (const sel of document.querySelectorAll('select')) {
+      const m = sel.name.match(/^(.+)\[(\d+)\]$/);
+      if (!m || knownNames.has(sel.name)) continue;
+      if (!selGroups[m[1]]) selGroups[m[1]] = [];
+      selGroups[m[1]].push({ idx: parseInt(m[2]), el: sel });
+    }
+    for (const [, items] of Object.entries(selGroups)) {
+      items.sort((a, b) => a.idx - b.idx);
+      if (items.some((i) => i.el.value && i.el.value !== '')) continue;
+      if (items.length < 2) continue;
+
+      const ctx = sectionContext(items[0].el);
+      let vals = null;
+
+      if (/高校|高等学校/.test(ctx) && hsEnterY > 0) {
+        vals = [String(hsEnterY), '04', String(hsGradY), '03', '0'];
+      } else if (/大学院/.test(ctx) && isGrad && uniEnterY > 0) {
+        vals = [String(uniEnterY), '04', String(gradY), pad2(p.gradMonth) || '03', p.gradKbn || '1'];
+      } else if ((/大学|学部|学校/.test(ctx) || /入学.*卒業/.test(ctx)) && uniEnterY > 0) {
+        if (isGrad) {
+          vals = [String(uniEnterY - 4), '04', String(uniEnterY), '03', '0'];
+        } else {
+          vals = [String(uniEnterY), '04', String(gradY), pad2(p.gradMonth) || '03', p.gradKbn || '1'];
+        }
+      }
+
+      if (vals) {
+        for (let i = 0; i < items.length && i < vals.length; i++) {
+          if (vals[i] != null) {
+            items[i].el.value = vals[i];
+            fire(items[i].el);
+            n++;
+          }
+        }
+      }
+    }
+
     return n;
   }
 
@@ -380,17 +496,85 @@
       );
     }
 
-    // 締切抽出（このページの締切を拾って保存）
+    // 締切抽出（選択式ピッカー）
     box.appendChild(
       makeFab('calendar', '締切抽出', '#c76b4a', () => {
-        const payload = buildPayload(null);
-        const cnt = payload.deadlines.length;
-        chrome.runtime.sendMessage({ type: 'CAPTURE', payload });
-        toast(cnt ? `締切${cnt}件を抽出・保存しました` : '締切は見つかりませんでした（ページは保存）');
+        const deadlines = extractDeadlines();
+        if (!deadlines.length) {
+          toast('締切は見つかりませんでした');
+          return;
+        }
+        showDeadlinePicker(deadlines);
       })
     );
 
     document.body.appendChild(box);
+  }
+
+  // 締切選択ピッカー
+  function showDeadlinePicker(deadlines) {
+    const existing = document.getElementById('amp-dl-picker');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'amp-dl-picker';
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.4);' +
+      'display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;';
+
+    const card = document.createElement('div');
+    card.style.cssText =
+      'background:#fff;border-radius:14px;padding:20px 24px;max-width:380px;width:90%;' +
+      'box-shadow:0 12px 40px rgba(0,0,0,.25);max-height:70vh;display:flex;flex-direction:column;';
+
+    card.innerHTML = `<div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#23262b;">
+      締切を選択（${deadlines.length}件）</div>`;
+
+    const list = document.createElement('div');
+    list.style.cssText = 'overflow-y:auto;flex:1;';
+    for (let i = 0; i < deadlines.length; i++) {
+      const d = deadlines[i];
+      const row = document.createElement('label');
+      row.style.cssText =
+        'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;color:#23262b;';
+      row.innerHTML =
+        `<input type="checkbox" checked data-dl-idx="${i}" style="width:18px;height:18px;accent-color:#c76b4a;">` +
+        `<span style="flex:1"><b>${d.type}</b></span>` +
+        `<span style="color:#6e7178;font-size:13px;">${d.date}</span>`;
+      list.appendChild(row);
+    }
+    card.appendChild(list);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;margin-top:14px;';
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = '保存';
+    saveBtn.style.cssText =
+      'flex:1;padding:10px;background:#c76b4a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.style.cssText =
+      'flex:1;padding:10px;background:#f4f3f0;color:#23262b;border:1px solid #e5e2dc;border-radius:8px;font-size:14px;cursor:pointer;';
+
+    saveBtn.onclick = () => {
+      const selected = [];
+      for (const cb of overlay.querySelectorAll('input[type="checkbox"]:checked')) {
+        selected.push(deadlines[parseInt(cb.dataset.dlIdx)]);
+      }
+      const payload = buildPayload(null);
+      payload.deadlines = selected;
+      chrome.runtime.sendMessage({ type: 'CAPTURE', payload });
+      overlay.remove();
+      toast(selected.length ? `締切${selected.length}件を保存しました` : 'ページ情報のみ保存しました');
+    };
+    cancelBtn.onclick = () => overlay.remove();
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
   }
 
   // ログインフォームへ資格情報を流し込む（ホームの「ログイン」起点）
