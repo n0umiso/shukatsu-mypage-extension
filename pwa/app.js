@@ -92,7 +92,12 @@
       $('#app').classList.remove('hidden');
       renderAll();
     } catch (err) {
-      $('#s-error').textContent = `接続失敗: ${err.message}`;
+      const detail = (err.message || '').includes('unauthorized')
+        ? 'トークンが一致しません。GAS のスクリプトプロパティ SYNC_TOKEN と同じ値を入力してください。'
+        : (err.message || '').includes('Failed to fetch')
+        ? 'GAS に接続できません。URL を確認してください。'
+        : `接続失敗: ${err.message}`;
+      $('#s-error').textContent = detail;
     } finally {
       $('#s-save').disabled = false;
       $('#s-save').textContent = '接続';
@@ -112,7 +117,8 @@
       const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
       $('#sync-status').textContent = now;
     } catch (err) {
-      $('#sync-status').textContent = '更新失敗';
+      const msg = (err.message || '').includes('unauthorized') ? 'トークン不一致' : '更新失敗';
+      $('#sync-status').textContent = msg;
     }
   }
 

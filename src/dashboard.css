@@ -62,6 +62,8 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 }
 .sync-box button:hover { background: var(--main-50); color: var(--main); }
 .sync-box p { font-size: 11px; color: var(--hint); margin: 8px 2px 0; min-height: 14px; }
+.backup-box { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.backup-box button { flex: 1; font-size: 12px; padding: 7px 4px; }
 
 /* ---- メイン ---- */
 .main { flex: 1; padding: 28px 32px; overflow-y: auto; max-height: 100vh; }

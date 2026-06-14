@@ -22,6 +22,11 @@
       <button id="sync"><span data-icon="refresh"></span>スプレッドシート同期</button>
       <p id="sync-info"></p>
     </div>
+    <div class="sync-box backup-box">
+      <button id="export-btn">エクスポート</button>
+      <button id="import-btn">インポート</button>
+      <input id="import-file" type="file" accept=".json" hidden />
+    </div>
   </aside>
 
   <main class="main">
@@ -51,7 +56,7 @@
         <h2>マイページ一覧</h2>
         <button id="add" class="primary"><span data-icon="plus"></span>マイページを追加</button>
       </div>
-      <p class="lead">ログインを検知すると自動で追加されます。企業名／URLから各マイページへ移動できます。</p>
+      <p class="lead">ポップアップの「今のページを保存」で取り込めます。企業名／URLから各マイページへ移動できます。</p>
       <div class="toolbar">
         <input id="search" type="search" placeholder="マイページを検索（企業名・ID・URL）" />
         <select id="filter-industry"><option value="">すべての業界</option></select>

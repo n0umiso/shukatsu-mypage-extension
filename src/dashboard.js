@@ -433,8 +433,47 @@ function init() {
   $('#sync').onclick = async () => {
     $('#sync-info').textContent = '同期中…';
     const res = await send({ type: 'SYNC_ALL' });
-    $('#sync-info').textContent = res.sync?.ok ? `同期完了（${res.sync.count}件）` : `失敗: ${res.sync?.error || ''}`;
+    if (!res || !res.sync) {
+      $('#sync-info').textContent = '同期失敗（応答なし）';
+    } else if (res.sync.ok) {
+      $('#sync-info').textContent = `同期完了（${res.sync.count}件）`;
+    } else if ((res.sync.error || '').includes('未設定')) {
+      $('#sync-info').textContent = 'GAS URL未設定 → 情報・設定で設定';
+    } else if ((res.sync.error || '').includes('unauthorized')) {
+      $('#sync-info').textContent = 'トークン不一致 → 設定を確認';
+    } else {
+      $('#sync-info').textContent = `失敗: ${res.sync.error || '不明'}`;
+    }
   };
+
+  // エクスポート / インポート
+  $('#export-btn').onclick = async () => {
+    const r = await send({ type: 'LIST' });
+    const blob = new Blob([JSON.stringify(r.entries || [], null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `shukatsu-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  $('#import-btn').onclick = () => $('#import-file').click();
+  $('#import-file').onchange = async (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const entries = JSON.parse(text);
+      if (!Array.isArray(entries)) throw new Error('invalid format');
+      if (!confirm(`${entries.length}件のデータをインポートします。既存の同名企業は上書きされます。よろしいですか？`)) return;
+      for (const e of entries) await send({ type: 'UPSERT', entry: e });
+      await refresh();
+      $('#sync-info').textContent = `${entries.length}件インポート完了`;
+    } catch (err) {
+      alert(`インポート失敗: ${err.message}`);
+    }
+    ev.target.value = '';
+  };
+
   refresh();
 }
 init();
