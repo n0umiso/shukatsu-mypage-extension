@@ -58,8 +58,10 @@
       const y = m[1], mo = String(m[2]).padStart(2, '0'), d = String(m[3]).padStart(2, '0');
       return `${y}/${mo}/${d}`;
     }
-    const y = new Date().getFullYear();
+    let y = new Date().getFullYear();
     const mo = String(m[4]).padStart(2, '0'), d = String(m[5]).padStart(2, '0');
+    const candidate = new Date(`${y}-${mo}-${d}`);
+    if (candidate < new Date()) y += 1;
     return `${y}/${mo}/${d}`;
   }
 
@@ -129,7 +131,7 @@
 
   function companyGuess() {
     let t = trimJp(document.title);
-    t = t.replace(/[|｜<>‹›«».].*$/, ''); // 区切り以降を捨てる（｜ など）
+    t = t.replace(/[|｜<>‹›«»].*$/, '');
     t = t.replace(/(マイページ|ログイン|採用|エントリー|新卒|MyPage|Login).*/gi, '');
     t = trimJp(t);
     return t || location.hostname;
@@ -145,51 +147,6 @@
       deadlines: extractDeadlines(),
     };
   }
-
-  // ---- 自動キャプチャ（送信方法を問わず拾う） --------------------------
-  let lastSentAt = 0;
-  function captureCredentials() {
-    const creds = findCredentials();
-    if (!creds || !creds.password) return; // PW未入力なら何もしない
-    const now = Date.now();
-    if (now - lastSentAt < 1000) return; // 二重送信防止
-    lastSentAt = now;
-    try {
-      chrome.runtime.sendMessage({ type: 'CAPTURE', payload: buildPayload(creds) });
-    } catch (_) {
-      /* 拡張がリロード直後などは無視 */
-    }
-  }
-
-  // 通常の form submit
-  document.addEventListener('submit', captureCredentials, true);
-
-  // i-web のように onclick→form.submit() でログインするケースを click で拾う
-  document.addEventListener(
-    'click',
-    (ev) => {
-      const t =
-        ev.target.closest &&
-        ev.target.closest('button, input[type="button"], input[type="submit"], a');
-      if (!t) return;
-      const hint = `${t.id} ${t.className} ${t.value || ''} ${t.textContent || ''}`.toLowerCase();
-      if (/login|ログイン|sign\s?in|送信|submit/.test(hint)) {
-        captureCredentials();
-      }
-    },
-    true
-  );
-
-  // パスワード欄で Enter
-  document.addEventListener(
-    'keydown',
-    (ev) => {
-      if (ev.key === 'Enter' && ev.target && ev.target.type === 'password') {
-        captureCredentials();
-      }
-    },
-    true
-  );
 
   // ---- popup からの手動取り込み要求 ------------------------------------
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

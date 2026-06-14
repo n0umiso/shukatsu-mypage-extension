@@ -21,8 +21,9 @@
 const DEFAULT_SETTINGS = {
   gasUrl: '',
   autoSync: true,
-  syncPassword: true, // false にするとパスワードはスプレッドシートへ送らない
-  showAutofillButton: true, // 対応サイトに「自動入力」ボタンを表示するか
+  syncPassword: true,
+  showAutofillButton: true,
+  syncToken: '',
 };
 
 export async function getEntries() {
@@ -42,23 +43,34 @@ export async function getEntryByHost(host) {
   return Object.values(entries).find((e) => e.host === host && !e.deleted) || null;
 }
 
-export async function saveEntry(entry) {
-  const entries = await getEntries();
-  if (!entry.id) entry.id = crypto.randomUUID();
-  entry.updatedAt = new Date().toISOString();
-  entries[entry.id] = entry;
-  await chrome.storage.local.set({ entries });
-  return entry;
+let _chain = Promise.resolve();
+function serialize(fn) {
+  const p = _chain.then(fn);
+  _chain = p.catch(() => {});
+  return p;
 }
 
-export async function deleteEntry(id) {
-  const entries = await getEntries();
-  if (entries[id]) {
-    entries[id].deleted = true;
-    entries[id].updatedAt = new Date().toISOString();
+export function saveEntry(entry) {
+  return serialize(async () => {
+    const entries = await getEntries();
+    if (!entry.id) entry.id = crypto.randomUUID();
+    entry.updatedAt = new Date().toISOString();
+    entries[entry.id] = entry;
     await chrome.storage.local.set({ entries });
-  }
-  return entries[id];
+    return entry;
+  });
+}
+
+export function deleteEntry(id) {
+  return serialize(async () => {
+    const entries = await getEntries();
+    if (entries[id]) {
+      entries[id].deleted = true;
+      entries[id].updatedAt = new Date().toISOString();
+      await chrome.storage.local.set({ entries });
+    }
+    return entries[id];
+  });
 }
 
 // ---- プロフィール（自動入力用の個人データ） ----

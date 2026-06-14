@@ -29,12 +29,12 @@ export async function syncAll() {
   const entries = await getEntries();
   const payload = {
     action: 'sync',
+    token: settings.syncToken || '',
     entries: Object.values(entries).map((e) => toPayload(e, settings.syncPassword)),
   };
   try {
     const res = await fetch(settings.gasUrl, {
       method: 'POST',
-      // GAS は単純リクエストにするため text/plain で送る（プリフライト回避）
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
     });
