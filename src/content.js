@@ -76,33 +76,95 @@
     return '締切';
   }
 
-  // 行のテキストから日付部分を除去し、意味のあるラベルを生成する
+  // 行テキストから日付・時刻・括弧を除去し、締切の種別ラベルを取り出す
   const DATE_STRIP_RE =
     /(\d{4})\s*[\/年\-.\s]\s*(\d{1,2})\s*[\/月\-.\s]\s*(\d{1,2})\s*日?|(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?/g;
-  function extractLabel(line) {
-    let label = line
+  function cleanLineLabel(line) {
+    let s = line
       .replace(DATE_STRIP_RE, '')                        // 日付を除去
       .replace(/[（(][^）)]*[）)]/g, '')                  // 括弧内の補足を除去
+      .replace(/正午|午前|午後|\d{1,2}時(\d{1,2}分)?/g, '') // 時刻表現を除去
       .replace(/[：:・|｜→▶▷►]/g, ' ')                   // 区切り文字をスペースに
-      .replace(/^[\s　\-─―–]+|[\s　\-─―–]+$/g, '')       // 前後の装飾・空白除去
+      .replace(/^[\s　\-─―–]+|[\s　\-─―–]+$/g, '')   // 前後の装飾・空白除去
       .replace(/\s{2,}/g, ' ')                           // 連続スペースを1つに
       .trim();
-    // 長すぎる場合は切り詰め
-    if (label.length > 40) label = label.slice(0, 38) + '…';
-    return label || '';
+    // 1〜2文字だけ残る場合はノイズと見なす（例: "まで"）
+    if (s.length <= 2) return '';
+    return s;
+  }
+
+  // 締切行より前を遡り、イベント名と●行の補足情報を探す
+  const BOILERPLATE_RE =
+    /こちら|ください|ありがとう|STEP\d|回答して|アップロード|入力|申込受付|ログイン|メッセージ|チェック|未読|既読|動画を|アンケート|バナー|ご視聴|ご確認|ご了承/;
+  function findContext(lines, idx) {
+    let subContext = '';          // ●エントリー締切 などの補足
+    let heading = '';            // イベント名
+    let headingIdx = -1;         // 最初に見つけた見出しの行番号
+    for (let i = idx - 1; i >= Math.max(0, idx - 10); i--) {
+      const l = lines[i];
+      if (!l || l.length > 80 || l.length < 2) continue;
+      // ● 行は締切の種別を表す補足情報
+      if (/^[●▶▷■□◆◇★☆►]/.test(l)) {
+        if (!subContext) subContext = l.replace(/^[●▶▷■□◆◇★☆►]\s*/, '').trim();
+        continue;
+      }
+      if (/^※/.test(l)) continue;                   // 注記
+      if (BOILERPLATE_RE.test(l)) continue;          // 定型文
+      if (/^[ー\-─―–=＝]+$/.test(l)) continue;     // 装飾行
+      // 日付を含む行はスキップ（開催日程など）
+      DATE_RE.lastIndex = 0;
+      const hasDate = DATE_RE.test(l);
+      DATE_RE.lastIndex = 0;
+      if (hasDate) continue;
+      if (!heading) {
+        // 最初の見出し候補
+        heading = l;
+        headingIdx = i;
+      } else if (headingIdx - i <= 1) {
+        // 直前の行も見出し（複数行のイベント名）→ 先頭に結合
+        heading = l + ' ' + heading;
+        break;
+      } else {
+        // 離れた行は無関係な UI 要素とみなす
+        break;
+      }
+    }
+    return { heading: heading.trim(), subContext };
+  }
+
+  function buildLabel(heading, lineLabel, subContext, type) {
+    const parts = [];
+    if (heading) parts.push(heading);
+    // 行ラベルがあればそれを、なければ●行の補足を使う
+    const detail = lineLabel || subContext || '';
+    // heading と重複しないなら追加
+    if (detail && !heading.includes(detail) && !detail.includes(heading)) {
+      parts.push(detail);
+    }
+    let label = parts.join(' ');
+    if (label.length > 50) label = label.slice(0, 48) + '…';
+    return label || type;
   }
 
   function extractDeadlines() {
     const text = document.body ? document.body.innerText : '';
-    const lines = text.split(/\n+/);
+    const allLines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     const found = [];
     const seen = new Set();
-    for (const raw of lines) {
-      const line = raw.trim();
-      if (!line || line.length > 120) continue;
+    for (let i = 0; i < allLines.length; i++) {
+      const line = allLines[i];
+      if (line.length > 120) continue;
       if (!DEADLINE_KEYWORDS.some((k) => line.includes(k))) continue;
+      // 日付があるか確認
+      DATE_RE.lastIndex = 0;
+      if (!DATE_RE.test(line)) continue;
+      DATE_RE.lastIndex = 0;
+
       const type = guessType(line);
-      const label = extractLabel(line);
+      const lineLabel = cleanLineLabel(line);
+      const { heading, subContext } = findContext(allLines, i);
+      const label = buildLabel(heading, lineLabel, subContext, type);
+
       let m;
       DATE_RE.lastIndex = 0;
       while ((m = DATE_RE.exec(line)) !== null) {
