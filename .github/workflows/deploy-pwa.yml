@@ -1,9 +1,9 @@
-name: Deploy PWA to GitHub Pages
+name: Deploy site to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: [pwa/**]
+    paths: [site/**, pwa/**]
   workflow_dispatch:
 
 permissions:
@@ -23,9 +23,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp -r site/* _site/
+          cp -r pwa _site/pwa
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: pwa
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -13,3 +13,6 @@
 # 個人データのエクスポート（万一置いた場合の流出防止）
 *.local.json
 secrets.*
+
+# Claude Code
+.claude/
