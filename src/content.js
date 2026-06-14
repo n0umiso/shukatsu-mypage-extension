@@ -76,6 +76,22 @@
     return '締切';
   }
 
+  // 行のテキストから日付部分を除去し、意味のあるラベルを生成する
+  const DATE_STRIP_RE =
+    /(\d{4})\s*[\/年\-.\s]\s*(\d{1,2})\s*[\/月\-.\s]\s*(\d{1,2})\s*日?|(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?/g;
+  function extractLabel(line) {
+    let label = line
+      .replace(DATE_STRIP_RE, '')                        // 日付を除去
+      .replace(/[（(][^）)]*[）)]/g, '')                  // 括弧内の補足を除去
+      .replace(/[：:・|｜→▶▷►]/g, ' ')                   // 区切り文字をスペースに
+      .replace(/^[\s　\-─―–]+|[\s　\-─―–]+$/g, '')       // 前後の装飾・空白除去
+      .replace(/\s{2,}/g, ' ')                           // 連続スペースを1つに
+      .trim();
+    // 長すぎる場合は切り詰め
+    if (label.length > 40) label = label.slice(0, 38) + '…';
+    return label || '';
+  }
+
   function extractDeadlines() {
     const text = document.body ? document.body.innerText : '';
     const lines = text.split(/\n+/);
@@ -85,15 +101,16 @@
       const line = raw.trim();
       if (!line || line.length > 120) continue;
       if (!DEADLINE_KEYWORDS.some((k) => line.includes(k))) continue;
+      const type = guessType(line);
+      const label = extractLabel(line);
       let m;
       DATE_RE.lastIndex = 0;
       while ((m = DATE_RE.exec(line)) !== null) {
         const date = normalizeDate(m);
-        const type = guessType(line);
         const key = `${type}|${date}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        found.push({ type, date });
+        found.push({ type, date, label });
       }
     }
     return found;
@@ -539,7 +556,7 @@
         'display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px;color:#23262b;';
       row.innerHTML =
         `<input type="checkbox" checked data-dl-idx="${i}" style="width:18px;height:18px;accent-color:#c76b4a;">` +
-        `<span style="flex:1"><b>${d.type}</b></span>` +
+        `<span style="flex:1"><b>${d.label || d.type}</b></span>` +
         `<span style="color:#6e7178;font-size:13px;">${d.date}</span>`;
       list.appendChild(row);
     }

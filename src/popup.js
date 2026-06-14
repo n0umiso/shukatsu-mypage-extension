@@ -54,7 +54,7 @@ function renderCurrent() {
 // ---- 締切が近い ----
 function renderDeadlines() {
   const rows = [];
-  for (const e of entries) for (const d of e.deadlines || []) rows.push({ e, type: d.type || '締切', n: daysUntil(d.date), date: d.date });
+  for (const e of entries) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date });
   const near = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 3);
   const box = $('#pop-deadlines');
   box.innerHTML = '';

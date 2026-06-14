@@ -25,12 +25,12 @@ function avatarColor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 function deadlinesToText(dls = []) {
-  return dls.map((d) => (d.type ? `${d.type}:${d.date}` : d.date)).join('\n');
+  return dls.map((d) => { const t = d.label || d.type; return t ? `${t}:${d.date}` : d.date; }).join('\n');
 }
 function textToDeadlines(text) {
   return text.split(/\n+/).map((l) => l.trim()).filter(Boolean).map((l) => {
     const i = l.lastIndexOf(':');
-    return i > 0 ? { type: l.slice(0, i).trim(), date: l.slice(i + 1).trim() } : { type: '', date: l };
+    if (i > 0) { const t = l.slice(0, i).trim(); return { type: t, date: l.slice(i + 1).trim(), label: t }; } return { type: '', date: l };
   });
 }
 const stageOf = (e) => e.stage || '気になる';
@@ -78,7 +78,7 @@ function renderHome() {
   $('#today').textContent = new Date().toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
 
   const rows = [];
-  for (const e of all) for (const d of e.deadlines || []) rows.push({ e, type: d.type || '締切', n: daysUntil(d.date), date: d.date });
+  for (const e of all) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date });
   const week = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 7).length;
 
   $('#m-total').textContent = all.length;
@@ -133,7 +133,7 @@ function nextActionEl(e) {
   const el = document.createElement('div');
   if (nd) {
     el.className = `s-next ${whenClass(nd.n)}`;
-    el.textContent = `${nd.type || '締切'} ${whenText(nd.n)}`;
+    el.textContent = `${nd.label || nd.type || '締切'} ${whenText(nd.n)}`;
   } else {
     el.className = 's-next muted';
     el.textContent = stageOf(e) === '内定' ? '結果待ち' : '次の予定なし';
@@ -188,7 +188,7 @@ function renderSenko() {
         const nd = nearestUpcoming(e);
         card.innerHTML = `<div class="k-name"></div><div class="k-next"></div>`;
         card.querySelector('.k-name').textContent = e.companyName || e.host;
-        card.querySelector('.k-next').textContent = nd ? `${nd.type || '締切'} ${whenText(nd.n)}` : '';
+        card.querySelector('.k-next').textContent = nd ? `${nd.label || nd.type || '締切'} ${whenText(nd.n)}` : '';
         card.onclick = () => openModal(e);
         col.appendChild(card);
       }
@@ -279,7 +279,7 @@ function makeCard(e) {
       const n = daysUntil(d.date);
       const span = document.createElement('span');
       span.className = 'dl' + (n !== null && n <= 7 ? ' soon' : '');
-      span.textContent = `${d.type ? d.type + ' ' : ''}${d.date}${n !== null && n >= 0 ? `（あと${n}日）` : ''}`;
+      const dlLabel = d.label || d.type; span.textContent = `${dlLabel ? dlLabel + ' ' : ''}${d.date}${n !== null && n >= 0 ? `（あと${n}日）` : ''}`;
       dls.appendChild(span);
     }
     card.appendChild(dls);
@@ -324,7 +324,7 @@ function renderGrid() {
 function renderDeadlines() {
   const list = $('#deadline-list');
   const rows = [];
-  for (const e of all) for (const d of e.deadlines || []) rows.push({ company: e.companyName || e.host, type: d.type || '締切', date: d.date, n: daysUntil(d.date) });
+  for (const e of all) for (const d of e.deadlines || []) rows.push({ company: e.companyName || e.host, type: d.label || d.type || '締切', date: d.date, n: daysUntil(d.date) });
   rows.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   list.innerHTML = rows.length ? '' : '<li class="empty">締切の登録がありません。</li>';
   for (const r of rows) {
