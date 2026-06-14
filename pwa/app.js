@@ -124,6 +124,14 @@
 
   $('#refresh').onclick = refresh;
   $('#config').onclick = () => showSetup(getConfig());
+  $('#clear-cache').onclick = () => {
+    if (!confirm('この端末に保存した GAS URL・トークン・表示データを削除しますか?')) return;
+    localStorage.removeItem('pwa_config');
+    localStorage.removeItem('pwa_data');
+    entries = [];
+    $('#sync-status').textContent = '';
+    showSetup(null);
+  };
 
   // ---- Tabs ----
   document.querySelectorAll('.tab').forEach((tab) => {

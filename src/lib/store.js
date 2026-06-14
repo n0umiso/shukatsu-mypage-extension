@@ -21,7 +21,7 @@
 const DEFAULT_SETTINGS = {
   gasUrl: '',
   autoSync: true,
-  syncPassword: true,
+  syncPassword: false,
   showAutofillButton: true,
   syncToken: '',
 };

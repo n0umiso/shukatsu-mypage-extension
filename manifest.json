@@ -3,7 +3,11 @@
   "name": "就活マイページ マネージャー",
   "version": "0.2.0",
   "description": "就活マイページのID・締切を管理し、Googleスプレッドシートへ自動同期します。",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -20,7 +24,12 @@
   "options_page": "src/profile.html",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "*://i-web.jp/*",
+        "*://*.i-web.jp/*",
+        "*://i-webs.jp/*",
+        "*://*.i-webs.jp/*"
+      ],
       "js": ["src/content.js"],
       "run_at": "document_idle"
     }
