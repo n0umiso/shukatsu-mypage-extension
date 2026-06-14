@@ -134,6 +134,26 @@ $('#sync').onclick = async () => {
     setStatus(`同期失敗: ${res.sync.error || '不明なエラー'}`, 'err');
   }
 };
+$('#autofill').onclick = async () => {
+  if (!activeTab?.id) return setStatus('タブが取得できません', 'err');
+  const profileRes = await send({ type: 'GET_PROFILE' });
+  const profile = profileRes?.profile;
+  if (!profile || !Object.keys(profile).length) {
+    setStatus('プロフィール未登録です', 'err');
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') });
+    window.close();
+    return;
+  }
+  let resp;
+  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'AUTOFILL_NOW', profile }); }
+  catch { return setStatus('このページでは自動入力できません', 'err'); }
+  if (!resp?.ok) {
+    if (resp?.error === 'no_form') setStatus('入力フォームが見つかりません', 'err');
+    else setStatus('このサイトは未対応です', 'err');
+    return;
+  }
+  setStatus(`${resp.filled}項目を自動入力しました`, 'ok');
+};
 $('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') }); window.close(); };
 $('#dashboard').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') }); window.close(); };
 $('#capture').onclick = captureCurrent;

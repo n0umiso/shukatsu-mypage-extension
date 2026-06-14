@@ -153,6 +153,18 @@
     if (msg.type === 'CAPTURE_NOW') {
       const creds = findCredentials();
       sendResponse({ ok: true, payload: buildPayload(creds) });
+    } else if (msg.type === 'AUTOFILL_NOW') {
+      const rule = activeRule();
+      const filler = rule && AUTOFILLERS[rule.name];
+      if (!filler) {
+        sendResponse({ ok: false, error: 'unsupported', hasForm: false });
+      } else if (!hasEntryForm()) {
+        sendResponse({ ok: false, error: 'no_form', hasForm: false });
+      } else {
+        const profile = msg.profile || {};
+        const n = filler(profile);
+        sendResponse({ ok: true, filled: n });
+      }
     }
     return true;
   });
