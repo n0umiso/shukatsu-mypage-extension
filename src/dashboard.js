@@ -17,6 +17,7 @@ let editingHost = '';
 let senkoMode = 'progress';
 
 const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
+try { if (!chrome.runtime?.id) location.reload(); } catch { location.reload(); }
 const AVATAR_COLORS = ['#223049', '#c76b4a', '#5a6b7b', '#6e7c5e', '#8a6d5a', '#4e6374', '#7a5c6e'];
 function avatarColor(name) {
   let h = 0;

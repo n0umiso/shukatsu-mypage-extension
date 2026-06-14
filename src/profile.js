@@ -14,6 +14,11 @@ const PREFS = [
 const $ = (s) => document.querySelector(s);
 const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
 
+function contextInvalidated() {
+  try { return !chrome.runtime?.id; } catch { return true; }
+}
+if (contextInvalidated()) location.reload();
+
 function fillOptions(sel, values, { pad } = {}) {
   const el = typeof sel === 'string' ? $('#' + sel) : sel;
   el.innerHTML = '<option value="">-</option>';
