@@ -60,3 +60,48 @@ footer { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; bo
 .wide.autofill:hover { background: #1a2539; color: #fff; }
 .wide.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .wide.primary:hover { background: var(--accent-600); color: #fff; }
+
+/* ---- Footer row ---- */
+.foot-row { display: flex; gap: 8px; }
+.foot-row .wide { flex: 1; }
+.wide.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.wide.accent:hover { background: var(--accent-600); }
+
+/* ---- Deadline action buttons ---- */
+.row .dl-acts { display: flex; gap: 3px; flex-shrink: 0; }
+.dl-act {
+  width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--panel); cursor: pointer; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.dl-act:hover { background: var(--main-50); color: var(--main); }
+.dl-act.is-done { background: var(--ok); color: #fff; border-color: var(--ok); }
+.dl-act.del:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+.row.done-row { opacity: .45; }
+.row.done-row .r-name { text-decoration: line-through; }
+
+/* ---- Deadline picker overlay ---- */
+.dl-picker {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center; padding: 10px;
+}
+.dl-picker-card {
+  background: var(--panel); border-radius: 14px; padding: 16px 18px;
+  width: 100%; max-height: 360px; display: flex; flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.dl-picker-card h4 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+.dl-picker-list { overflow-y: auto; flex: 1; }
+.dl-picker-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 2px;
+  border-bottom: 1px solid var(--surface-2); font-size: 13px; cursor: pointer;
+}
+.dl-picker-row input { width: 16px; height: 16px; accent-color: var(--accent); }
+.dl-picker-row .lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-picker-row .dt { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dl-picker-acts { display: flex; gap: 6px; margin-top: 12px; }
+.dl-picker-acts button { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500; }
+.dl-picker-acts .save { background: var(--accent); color: #fff; border: none; }
+.dl-picker-acts .save:hover { background: var(--accent-600); }
+.dl-picker-acts .cancel { background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); }
+.dl-empty-msg { padding: 16px; text-align: center; color: var(--hint); font-size: 12px; }

@@ -182,3 +182,45 @@ h3.sec span { display: inline-flex; align-items: center; gap: 8px; }
 .pw-row input { flex: 1; }
 .mini { width: auto !important; padding: 4px 10px !important; margin-top: 4px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 7px; cursor: pointer; color: var(--fg); }
 .modal-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* ---- カレンダー ---- */
+.cal { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+.cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.cal-nav button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; cursor: pointer; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; }
+.cal-nav button:hover { background: var(--main-50); color: var(--main); }
+.cal-month-label { font-size: 16px; font-weight: 600; }
+.cal-today-btn { width: auto !important; padding: 0 12px !important; font-size: 12px; margin-left: auto; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 11px; color: var(--hint); padding: 4px 0; font-weight: 500; }
+.cal-dow:first-child { color: var(--danger); }
+.cal-dow:last-child { color: #3b82f6; }
+.cal-day { text-align: center; border-radius: 10px; padding: 6px 2px; cursor: pointer; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; transition: background .12s; }
+.cal-day:hover { background: var(--surface-2); }
+.cal-day.empty { cursor: default; }
+.cal-day.empty:hover { background: transparent; }
+.cal-num { font-size: 13px; font-weight: 500; }
+.cal-day.today .cal-num { background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.cal-day.selected { background: var(--main-50); }
+.cal-day.sun .cal-num { color: var(--danger); }
+.cal-day.sat .cal-num { color: #3b82f6; }
+.cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+.cal-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.cal-dot.done-dot { background: var(--hint); }
+.cal-detail { display: flex; flex-direction: column; gap: 6px; }
+.cal-detail-empty { color: var(--hint); font-size: 13px; text-align: center; padding: 12px; }
+.cal-detail-head { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+
+/* ---- 締切行の done/delete ---- */
+.deadline-list li { position: relative; }
+.d-actions { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
+.d-actions button {
+  width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); cursor: pointer; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.d-actions button:hover { background: var(--main-50); color: var(--main); }
+.d-actions .d-done-btn.is-done { background: var(--ok); color: #fff; border-color: var(--ok); }
+.d-actions .d-del-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+.dl-done { opacity: .45; }
+.dl-done .d-date { text-decoration: line-through; }
+.dl-done .d-type { opacity: .6; }

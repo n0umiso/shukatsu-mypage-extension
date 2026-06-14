@@ -15,6 +15,8 @@ let profile = {};
 let editingId = null;
 let editingHost = '';
 let senkoMode = 'progress';
+let dlViewMode = 'cal'; // 'cal' or 'list'
+let calYear, calMonth, calSelectedDay;
 
 const send = (msg) => new Promise((r) => chrome.runtime.sendMessage(msg, r));
 try { if (!chrome.runtime?.id) location.reload(); } catch { location.reload(); }
@@ -35,7 +37,7 @@ function textToDeadlines(text) {
 }
 const stageOf = (e) => e.stage || '気になる';
 function nearestUpcoming(entry) {
-  const ds = (entry.deadlines || []).map((d) => ({ ...d, n: daysUntil(d.date) })).filter((d) => d.n !== null);
+  const ds = (entry.deadlines || []).map((d) => ({ ...d, n: daysUntil(d.date) })).filter((d) => d.n !== null && !d.done);
   const up = ds.filter((d) => d.n >= 0).sort((a, b) => a.n - b.n);
   return up[0] || ds.sort((a, b) => String(a.date).localeCompare(String(b.date)))[0] || null;
 }
@@ -69,6 +71,16 @@ function makeLogo(entry, cls = 'logo') {
   return img;
 }
 
+// ---- 締切 done/delete ヘルパー ----
+async function toggleDeadline(entryId, date, dlType) {
+  await send({ type: 'TOGGLE_DEADLINE', entryId, date, dlType });
+  await refresh();
+}
+async function removeDeadline(entryId, date, dlType) {
+  await send({ type: 'REMOVE_DEADLINE', entryId, date, dlType });
+  await refresh();
+}
+
 // =====================================================================
 //  ホーム
 // =====================================================================
@@ -78,31 +90,61 @@ function renderHome() {
   $('#today').textContent = new Date().toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
 
   const rows = [];
-  for (const e of all) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date });
-  const week = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 7).length;
+  for (const e of all) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date, done: !!d.done, entryId: e.id, dlType: d.type || '' });
+  const week = rows.filter((r) => !r.done && r.n !== null && r.n >= 0 && r.n <= 7).length;
 
   $('#m-total').textContent = all.length;
   $('#m-active').textContent = all.filter((e) => isActive(stageOf(e))).length;
   $('#m-week').textContent = week;
 
-  // 締切が近い（14日以内 / 未来 / 近い順）
-  const near = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 6);
+  // 締切が近い（14日以内 / 未完了 / 近い順）
+  const near = rows.filter((r) => !r.done && r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 6);
   const dl = $('#home-deadlines');
   dl.innerHTML = '';
   if (!near.length) dl.innerHTML = '<div class="home-empty">直近2週間の締切はありません。</div>';
   for (const r of near) {
     const row = document.createElement('div');
     row.className = 'home-row';
-    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button>${icon('external', 14)}開く</button>`;
-    row.querySelector('.dot').style.background = whenColor(r.n);
-    row.querySelector('.r-name').textContent = r.e.companyName || r.e.host;
-    row.querySelector('.r-sub').textContent = `${r.type}・${r.date}`;
-    const w = row.querySelector('.r-when'); w.textContent = whenText(r.n); w.style.color = whenColor(r.n);
-    row.querySelector('button').onclick = () => openLogin(r.e);
+    // dot
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = whenColor(r.n);
+    row.appendChild(dot);
+    // body
+    const body = document.createElement('div');
+    body.className = 'body';
+    const rName = document.createElement('div');
+    rName.className = 'r-name';
+    rName.textContent = r.e.companyName || r.e.host;
+    body.appendChild(rName);
+    const rSub = document.createElement('div');
+    rSub.className = 'r-sub';
+    rSub.textContent = `${r.type}・${r.date}`;
+    body.appendChild(rSub);
+    row.appendChild(body);
+    // when
+    const w = document.createElement('span');
+    w.className = 'r-when';
+    w.textContent = whenText(r.n);
+    w.style.color = whenColor(r.n);
+    row.appendChild(w);
+    // action buttons
+    const acts = document.createElement('div');
+    acts.className = 'd-actions';
+    const doneBtn = document.createElement('button');
+    doneBtn.title = '完了'; doneBtn.innerHTML = icon('done', 14);
+    doneBtn.onclick = () => toggleDeadline(r.entryId, r.date, r.dlType);
+    acts.appendChild(doneBtn);
+    row.appendChild(acts);
+    // open button
+    const btn = document.createElement('button');
+    btn.innerHTML = `${icon('external', 14)}開く`;
+    btn.onclick = () => openLogin(r.e);
+    row.appendChild(btn);
     dl.appendChild(row);
   }
 
-  // クイックログイン（更新が新しい順）
+  // クイックログイン
   const quick = [...all].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 6);
   const q = $('#home-quick');
   q.innerHTML = '';
@@ -278,8 +320,10 @@ function makeCard(e) {
     for (const d of e.deadlines) {
       const n = daysUntil(d.date);
       const span = document.createElement('span');
-      span.className = 'dl' + (n !== null && n <= 7 ? ' soon' : '');
-      const dlLabel = d.label || d.type; span.textContent = `${dlLabel ? dlLabel + ' ' : ''}${d.date}${n !== null && n >= 0 ? `（あと${n}日）` : ''}`;
+      const dlLabel = d.label || d.type;
+      span.className = 'dl' + (d.done ? '' : n !== null && n <= 7 ? ' soon' : '');
+      if (d.done) span.style.opacity = '0.45';
+      span.textContent = `${dlLabel ? dlLabel + ' ' : ''}${d.date}${!d.done && n !== null && n >= 0 ? `（あと${n}日）` : ''}${d.done ? ' ✓' : ''}`;
       dls.appendChild(span);
     }
     card.appendChild(dls);
@@ -321,20 +365,252 @@ function renderGrid() {
   for (const e of items) grid.appendChild(makeCard(e));
 }
 
-function renderDeadlines() {
-  const list = $('#deadline-list');
+// =====================================================================
+//  締切カレンダー
+// =====================================================================
+function allDeadlineRows() {
   const rows = [];
-  for (const e of all) for (const d of e.deadlines || []) rows.push({ company: e.companyName || e.host, type: d.label || d.type || '締切', date: d.date, n: daysUntil(d.date) });
+  for (const e of all) {
+    for (const d of e.deadlines || []) {
+      rows.push({
+        company: e.companyName || e.host,
+        type: d.label || d.type || '締切',
+        date: d.date,
+        n: daysUntil(d.date),
+        done: !!d.done,
+        entryId: e.id,
+        dlType: d.type || '',
+      });
+    }
+  }
+  return rows;
+}
+
+function dlMapForMonth(rows, y, m) {
+  const map = {};
+  for (const r of rows) {
+    const dt = new Date(String(r.date).replace(/\//g, '-'));
+    if (isNaN(dt)) continue;
+    if (dt.getFullYear() === y && dt.getMonth() === m) {
+      const day = dt.getDate();
+      (map[day] = map[day] || []).push(r);
+    }
+  }
+  return map;
+}
+
+function renderCalendar() {
+  const rows = allDeadlineRows();
+  const dlMap = dlMapForMonth(rows, calYear, calMonth);
+  const gridEl = $('#cal-grid');
+  const label = $('#cal-month');
+  label.textContent = `${calYear}年${calMonth + 1}月`;
+  gridEl.innerHTML = '';
+
+  // DOW headers
+  const dows = ['日', '月', '火', '水', '木', '金', '土'];
+  for (const dow of dows) {
+    const h = document.createElement('div');
+    h.className = 'cal-dow';
+    h.textContent = dow;
+    gridEl.appendChild(h);
+  }
+
+  const firstDow = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === calYear && today.getMonth() === calMonth;
+
+  // Empty cells
+  for (let i = 0; i < firstDow; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-day empty';
+    gridEl.appendChild(cell);
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    const dls = dlMap[d] || [];
+    const dow = (firstDow + d - 1) % 7;
+    const isToday = isCurrentMonth && today.getDate() === d;
+    const isSelected = calSelectedDay === d;
+    cell.className = 'cal-day' +
+      (isToday ? ' today' : '') +
+      (isSelected ? ' selected' : '') +
+      (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '');
+
+    const num = document.createElement('span');
+    num.className = 'cal-num';
+    num.textContent = d;
+    cell.appendChild(num);
+
+    if (dls.length) {
+      const dots = document.createElement('div');
+      dots.className = 'cal-dots';
+      for (const dl of dls.slice(0, 4)) {
+        const dot = document.createElement('span');
+        dot.className = 'cal-dot' + (dl.done ? ' done-dot' : '');
+        dots.appendChild(dot);
+      }
+      cell.appendChild(dots);
+    }
+
+    const day = d;
+    cell.onclick = () => {
+      calSelectedDay = calSelectedDay === day ? null : day;
+      renderCalendar();
+      renderCalendarDetail();
+    };
+    gridEl.appendChild(cell);
+  }
+
+  renderCalendarDetail();
+}
+
+function renderCalendarDetail() {
+  const detail = $('#cal-detail');
+  detail.innerHTML = '';
+  const rows = allDeadlineRows();
+
+  let filtered;
+  if (calSelectedDay != null) {
+    filtered = dlMapForMonth(rows, calYear, calMonth)[calSelectedDay] || [];
+    const head = document.createElement('div');
+    head.className = 'cal-detail-head';
+    head.textContent = `${calMonth + 1}月${calSelectedDay}日の締切`;
+    detail.appendChild(head);
+  } else {
+    // Show all deadlines in the month
+    const monthDls = [];
+    const map = dlMapForMonth(rows, calYear, calMonth);
+    for (const day of Object.keys(map).sort((a, b) => a - b)) {
+      monthDls.push(...map[day]);
+    }
+    filtered = monthDls;
+    if (filtered.length) {
+      const head = document.createElement('div');
+      head.className = 'cal-detail-head';
+      head.textContent = `${calMonth + 1}月の締切（${filtered.length}件）`;
+      detail.appendChild(head);
+    }
+  }
+
+  if (!filtered.length) {
+    detail.innerHTML += '<div class="cal-detail-empty">締切はありません</div>';
+    return;
+  }
+
+  for (const r of filtered) {
+    const li = document.createElement('div');
+    li.className = 'home-row' + (r.done ? ' dl-done' : '');
+    li.style.gap = '10px';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = r.done ? 'var(--hint)' : whenColor(r.n);
+    li.appendChild(dot);
+
+    const body = document.createElement('div');
+    body.className = 'body';
+    const rName = document.createElement('div');
+    rName.className = 'r-name';
+    rName.textContent = r.company;
+    body.appendChild(rName);
+    const rSub = document.createElement('div');
+    rSub.className = 'r-sub';
+    rSub.textContent = `${r.type}・${r.date}`;
+    body.appendChild(rSub);
+    li.appendChild(body);
+
+    if (!r.done && r.n !== null && r.n >= 0) {
+      const w = document.createElement('span');
+      w.className = 'r-when';
+      w.textContent = whenText(r.n);
+      w.style.color = whenColor(r.n);
+      li.appendChild(w);
+    }
+
+    // action buttons
+    const acts = document.createElement('div');
+    acts.className = 'd-actions';
+
+    const doneBtn = document.createElement('button');
+    doneBtn.className = r.done ? 'd-done-btn is-done' : 'd-done-btn';
+    doneBtn.title = r.done ? '未完了に戻す' : '完了';
+    doneBtn.innerHTML = icon(r.done ? 'undo' : 'done', 14);
+    doneBtn.onclick = (ev) => { ev.stopPropagation(); toggleDeadline(r.entryId, r.date, r.dlType); };
+    acts.appendChild(doneBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'd-del-btn';
+    delBtn.title = '削除';
+    delBtn.innerHTML = icon('trash', 14);
+    delBtn.onclick = (ev) => { ev.stopPropagation(); removeDeadline(r.entryId, r.date, r.dlType); };
+    acts.appendChild(delBtn);
+
+    li.appendChild(acts);
+    detail.appendChild(li);
+  }
+}
+
+function renderDeadlines() {
+  const calWrap = $('#dl-cal-wrap');
+  const listEl = $('#deadline-list');
+
+  if (dlViewMode === 'cal') {
+    calWrap.classList.remove('hidden');
+    listEl.classList.add('hidden');
+    renderCalendar();
+    return;
+  }
+
+  calWrap.classList.add('hidden');
+  listEl.classList.remove('hidden');
+
+  const rows = allDeadlineRows();
   rows.sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  list.innerHTML = rows.length ? '' : '<li class="empty">締切の登録がありません。</li>';
+  listEl.innerHTML = rows.length ? '' : '<li class="empty">締切の登録がありません。</li>';
   for (const r of rows) {
     const li = document.createElement('li');
+    if (r.done) li.classList.add('dl-done');
     const left = r.n === null ? '' : r.n < 0 ? '終了' : `あと${r.n}日`;
-    li.innerHTML = `<span class="d-date"></span><span class="d-left">${left}</span><span class="d-type"></span><span class="d-company"></span>`;
-    li.querySelector('.d-date').textContent = r.date;
-    li.querySelector('.d-type').textContent = r.type;
-    li.querySelector('.d-company').textContent = r.company;
-    list.appendChild(li);
+
+    const dateEl = document.createElement('span');
+    dateEl.className = 'd-date'; dateEl.textContent = r.date;
+    li.appendChild(dateEl);
+
+    const leftEl = document.createElement('span');
+    leftEl.className = 'd-left'; leftEl.textContent = left;
+    li.appendChild(leftEl);
+
+    const typeEl = document.createElement('span');
+    typeEl.className = 'd-type'; typeEl.textContent = r.type;
+    li.appendChild(typeEl);
+
+    const compEl = document.createElement('span');
+    compEl.className = 'd-company'; compEl.textContent = r.company;
+    li.appendChild(compEl);
+
+    const acts = document.createElement('div');
+    acts.className = 'd-actions';
+
+    const doneBtn = document.createElement('button');
+    doneBtn.className = r.done ? 'd-done-btn is-done' : 'd-done-btn';
+    doneBtn.title = r.done ? '未完了に戻す' : '完了';
+    doneBtn.innerHTML = icon(r.done ? 'undo' : 'done', 14);
+    doneBtn.onclick = (ev) => { ev.stopPropagation(); toggleDeadline(r.entryId, r.date, r.dlType); };
+    acts.appendChild(doneBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'd-del-btn';
+    delBtn.title = '削除';
+    delBtn.innerHTML = icon('trash', 14);
+    delBtn.onclick = (ev) => { ev.stopPropagation(); removeDeadline(r.entryId, r.date, r.dlType); };
+    acts.appendChild(delBtn);
+
+    li.appendChild(acts);
+    listEl.appendChild(li);
   }
 }
 
@@ -412,6 +688,13 @@ function switchView(view) {
 // ---- 初期化 ----
 function init() {
   applyIcons(document);
+
+  // カレンダー初期値
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  calSelectedDay = null;
+
   for (const ind of INDUSTRIES) {
     const o = document.createElement('option');
     o.value = ind; o.textContent = ind;
@@ -431,6 +714,16 @@ function init() {
   if (['home', 'list', 'senko', 'deadlines'].includes(initial)) switchView(initial);
   $('#senko-progress').onclick = () => { senkoMode = 'progress'; renderSenko(); };
   $('#senko-board').onclick = () => { senkoMode = 'board'; renderSenko(); };
+
+  // 締切ビュー切替
+  $('#dl-view-cal').onclick = () => { dlViewMode = 'cal'; $('#dl-view-cal').classList.add('active'); $('#dl-view-list').classList.remove('active'); renderDeadlines(); };
+  $('#dl-view-list').onclick = () => { dlViewMode = 'list'; $('#dl-view-list').classList.add('active'); $('#dl-view-cal').classList.remove('active'); renderDeadlines(); };
+
+  // カレンダーナビ
+  $('#cal-prev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calSelectedDay = null; renderCalendar(); };
+  $('#cal-next').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } calSelectedDay = null; renderCalendar(); };
+  $('#cal-today').onclick = () => { const n = new Date(); calYear = n.getFullYear(); calMonth = n.getMonth(); calSelectedDay = null; renderCalendar(); };
+
   $('#sync').onclick = async () => {
     $('#sync-info').textContent = '同期中…';
     const res = await send({ type: 'SYNC_ALL' });

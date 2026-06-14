@@ -17,6 +17,10 @@ const PATHS = {
   done: '<path d="M20 6 9 17l-5-5"/>',
   pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  'undo': '<path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 2.1-5.3L3 7"/>',
 };
 
 export function icon(name, size = 16) {

@@ -85,8 +85,27 @@
 
     <!-- 締切 -->
     <section id="view-deadlines" class="hidden">
-      <div class="page-head"><h2>締切カレンダー</h2></div>
-      <p class="lead">登録された締切を日付順に表示します。</p>
+      <div class="page-head">
+        <h2>締切</h2>
+        <div class="seg">
+          <button id="dl-view-cal" class="seg-btn active">カレンダー</button>
+          <button id="dl-view-list" class="seg-btn">リスト</button>
+        </div>
+      </div>
+
+      <div id="dl-cal-wrap">
+        <div class="cal">
+          <div class="cal-nav">
+            <button id="cal-prev" title="前月"><span data-icon="chevron-left"></span></button>
+            <span id="cal-month" class="cal-month-label"></span>
+            <button id="cal-next" title="翌月"><span data-icon="chevron-right"></span></button>
+            <button id="cal-today" class="cal-today-btn">今日</button>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+        <div id="cal-detail" class="cal-detail"></div>
+      </div>
+
       <ul id="deadline-list" class="deadline-list"></ul>
     </section>
   </main>

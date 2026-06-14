@@ -51,23 +51,96 @@ function renderCurrent() {
   $('#cur-capture').onclick = captureCurrent;
 }
 
-// ---- 締切が近い ----
+// ---- 締切が近い（done/delete 対応） ----
 function renderDeadlines() {
   const rows = [];
-  for (const e of entries) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date });
-  const near = rows.filter((r) => r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 3);
+  for (const e of entries) {
+    for (const d of e.deadlines || []) {
+      rows.push({
+        e,
+        type: d.label || d.type || '締切',
+        n: daysUntil(d.date),
+        date: d.date,
+        done: !!d.done,
+        entryId: e.id,
+        dlType: d.type || '',
+      });
+    }
+  }
+  // 未完了で14日以内のものを表示（完了済は除外）
+  const near = rows
+    .filter((r) => !r.done && r.n !== null && r.n >= 0 && r.n <= 14)
+    .sort((a, b) => a.n - b.n)
+    .slice(0, 5);
   const box = $('#pop-deadlines');
   box.innerHTML = '';
   if (!near.length) { box.innerHTML = '<div class="empty">直近の締切はありません</div>'; return; }
   for (const r of near) {
     const row = document.createElement('div');
     row.className = 'row';
-    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button class="go">${icon('external', 13)}開く</button>`;
-    row.querySelector('.dot').style.background = whenColor(r.n);
-    row.querySelector('.r-name').textContent = r.e.companyName || r.e.host;
-    row.querySelector('.r-sub').textContent = `${r.type}・${r.date}`;
-    const w = row.querySelector('.r-when'); w.textContent = whenText(r.n); w.style.color = whenColor(r.n);
-    row.querySelector('.go').onclick = () => openLogin(r.e);
+
+    // dot
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = whenColor(r.n);
+    row.appendChild(dot);
+
+    // body
+    const body = document.createElement('div');
+    body.className = 'body';
+    const rName = document.createElement('div');
+    rName.className = 'r-name';
+    rName.textContent = r.e.companyName || r.e.host;
+    body.appendChild(rName);
+    const rSub = document.createElement('div');
+    rSub.className = 'r-sub';
+    rSub.textContent = `${r.type}・${r.date}`;
+    body.appendChild(rSub);
+    row.appendChild(body);
+
+    // when
+    const w = document.createElement('span');
+    w.className = 'r-when';
+    w.textContent = whenText(r.n);
+    w.style.color = whenColor(r.n);
+    row.appendChild(w);
+
+    // action buttons
+    const acts = document.createElement('div');
+    acts.className = 'dl-acts';
+
+    const doneBtn = document.createElement('button');
+    doneBtn.className = 'dl-act';
+    doneBtn.title = '完了';
+    doneBtn.innerHTML = icon('done', 13);
+    doneBtn.onclick = async (ev) => {
+      ev.stopPropagation();
+      await send({ type: 'TOGGLE_DEADLINE', entryId: r.entryId, date: r.date, dlType: r.dlType });
+      await refresh();
+      setStatus('完了にしました', 'ok');
+    };
+    acts.appendChild(doneBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'dl-act del';
+    delBtn.title = '削除';
+    delBtn.innerHTML = icon('trash', 13);
+    delBtn.onclick = async (ev) => {
+      ev.stopPropagation();
+      await send({ type: 'REMOVE_DEADLINE', entryId: r.entryId, date: r.date, dlType: r.dlType });
+      await refresh();
+      setStatus('締切を削除しました', 'ok');
+    };
+    acts.appendChild(delBtn);
+
+    row.appendChild(acts);
+
+    const goBtn = document.createElement('button');
+    goBtn.className = 'go';
+    goBtn.innerHTML = `${icon('external', 13)}`;
+    goBtn.onclick = () => openLogin(r.e);
+    row.appendChild(goBtn);
+
     box.appendChild(row);
   }
 }
@@ -93,6 +166,89 @@ function renderQuick() {
     row.appendChild(btn);
     box.appendChild(row);
   }
+}
+
+// ---- 締切抽出ピッカー ----
+function showDeadlinePicker(deadlines, payload) {
+  const existing = document.querySelector('.dl-picker');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'dl-picker';
+
+  const card = document.createElement('div');
+  card.className = 'dl-picker-card';
+
+  if (!deadlines.length) {
+    card.innerHTML = '<h4>締切を抽出</h4><div class="dl-empty-msg">このページから締切は見つかりませんでした</div>';
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '閉じる';
+    closeBtn.className = 'cancel';
+    closeBtn.style.cssText = 'margin-top:10px;width:100%;padding:8px;border-radius:8px;cursor:pointer;background:var(--surface-2);border:1px solid var(--line);';
+    closeBtn.onclick = () => overlay.remove();
+    card.appendChild(closeBtn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    return;
+  }
+
+  const h4 = document.createElement('h4');
+  h4.textContent = `締切を抽出（${deadlines.length}件）`;
+  card.appendChild(h4);
+
+  const list = document.createElement('div');
+  list.className = 'dl-picker-list';
+  for (let i = 0; i < deadlines.length; i++) {
+    const d = deadlines[i];
+    const row = document.createElement('label');
+    row.className = 'dl-picker-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.dataset.idx = i;
+    row.appendChild(cb);
+    const lbl = document.createElement('span');
+    lbl.className = 'lbl'; lbl.textContent = d.label || d.type || '締切';
+    row.appendChild(lbl);
+    const dt = document.createElement('span');
+    dt.className = 'dt'; dt.textContent = d.date;
+    row.appendChild(dt);
+    list.appendChild(row);
+  }
+  card.appendChild(list);
+
+  const acts = document.createElement('div');
+  acts.className = 'dl-picker-acts';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'save'; saveBtn.textContent = '保存';
+  saveBtn.onclick = async () => {
+    const selected = [];
+    for (const cb of card.querySelectorAll('input[type="checkbox"]:checked')) {
+      selected.push(deadlines[parseInt(cb.dataset.idx)]);
+    }
+    payload.deadlines = selected;
+    await send({ type: 'CAPTURE', payload });
+    overlay.remove();
+    await refresh();
+    setStatus(selected.length ? `締切${selected.length}件を保存しました` : 'ページ情報のみ保存しました', 'ok');
+  };
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'cancel'; cancelBtn.textContent = 'キャンセル';
+  cancelBtn.onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  acts.appendChild(saveBtn);
+  acts.appendChild(cancelBtn);
+  card.appendChild(acts);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+
+async function extractDeadlines() {
+  if (!activeTab?.id) return setStatus('タブが取得できません', 'err');
+  let resp;
+  try { resp = await chrome.tabs.sendMessage(activeTab.id, { type: 'CAPTURE_NOW' }); }
+  catch { return setStatus('このページからは抽出できません', 'err'); }
+  if (!resp?.payload) return setStatus('抽出に失敗しました', 'err');
+  showDeadlinePicker(resp.payload.deadlines || [], resp.payload);
 }
 
 async function captureCurrent() {
@@ -154,6 +310,7 @@ $('#autofill').onclick = async () => {
   }
   setStatus(`${resp.filled}項目を自動入力しました`, 'ok');
 };
+$('#extract-dl').onclick = extractDeadlines;
 $('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') }); window.close(); };
 $('#dashboard').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') }); window.close(); };
 $('#capture').onclick = captureCurrent;

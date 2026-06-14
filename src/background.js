@@ -1,5 +1,6 @@
 // Service Worker: データ更新の単一窓口 + スプレッドシート同期のトリガ。
 import {
+  getEntries,
   getEntryList,
   getEntryByHost,
   saveEntry,
@@ -106,6 +107,36 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case 'SET_SETTINGS':
           sendResponse({ ok: true, settings: await saveSettings(msg.patch) });
           break;
+
+        case 'TOGGLE_DEADLINE': {
+          const entries = await getEntries();
+          const entry = entries[msg.entryId];
+          if (entry?.deadlines) {
+            const dl = entry.deadlines.find(
+              (d) => d.date === msg.date && (d.type || '') === (msg.dlType || '')
+            );
+            if (dl) {
+              dl.done = !dl.done;
+              await saveEntry(entry);
+            }
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+
+        case 'REMOVE_DEADLINE': {
+          const entries = await getEntries();
+          const entry = entries[msg.entryId];
+          if (entry?.deadlines) {
+            entry.deadlines = entry.deadlines.filter(
+              (d) => !(d.date === msg.date && (d.type || '') === (msg.dlType || ''))
+            );
+            await saveEntry(entry);
+          }
+          const sync = await maybeSync();
+          sendResponse({ ok: true, sync });
+          break;
+        }
 
         default:
           sendResponse({ ok: false, error: `unknown message: ${msg.type}` });
