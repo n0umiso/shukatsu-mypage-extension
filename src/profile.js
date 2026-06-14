@@ -57,10 +57,22 @@ function getVal(el) {
 }
 
 async function load() {
-  const [{ profile }, { settings }] = await Promise.all([
-    send({ type: 'GET_PROFILE' }),
-    send({ type: 'GET_SETTINGS' }),
-  ]);
+  let profile, settings;
+  try {
+    const [pRes, sRes] = await Promise.all([
+      send({ type: 'GET_PROFILE' }),
+      send({ type: 'GET_SETTINGS' }),
+    ]);
+    profile = pRes?.profile;
+    settings = sRes?.settings;
+  } catch { /* service worker not ready */ }
+
+  if (!profile || !settings) {
+    const data = await chrome.storage.local.get(['profile', 'settings']);
+    profile = profile || data.profile || {};
+    settings = settings || { ...{ gasUrl: '', autoSync: true, syncPassword: true, showAutofillButton: true, syncToken: '' }, ...data.settings };
+  }
+
   for (const el of document.querySelectorAll('[data-profile]')) {
     setVal(el, profile[el.dataset.profile]);
   }
@@ -79,11 +91,24 @@ async function save() {
   for (const el of document.querySelectorAll('[data-setting]')) {
     settingsPatch[el.dataset.setting] = getVal(el);
   }
-  await Promise.all([
-    send({ type: 'SET_PROFILE', patch: profile }),
-    send({ type: 'SET_SETTINGS', patch: settingsPatch }),
-  ]);
-  $('#saved').textContent = '保存しました';
+  try {
+    const [pRes, sRes] = await Promise.all([
+      send({ type: 'SET_PROFILE', patch: profile }),
+      send({ type: 'SET_SETTINGS', patch: settingsPatch }),
+    ]);
+    if (pRes?.ok && sRes?.ok) {
+      $('#saved').textContent = '保存しました';
+      setTimeout(() => ($('#saved').textContent = ''), 2500);
+      return;
+    }
+  } catch { /* service worker not ready */ }
+
+  const current = await chrome.storage.local.get(['profile', 'settings']);
+  await chrome.storage.local.set({
+    profile: { ...current.profile, ...profile },
+    settings: { ...current.settings, ...settingsPatch },
+  });
+  $('#saved').textContent = '保存しました（直接保存）';
   setTimeout(() => ($('#saved').textContent = ''), 2500);
 }
 
