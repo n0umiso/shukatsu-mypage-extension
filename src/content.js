@@ -359,7 +359,7 @@
     const t = document.createElement('div');
     t.textContent = text;
     t.style.cssText =
-      'position:fixed;bottom:90px;right:24px;z-index:2147483647;background:#111827;color:#fff;' +
+      'position:fixed;bottom:90px;right:24px;z-index:2147483647;background:#223049;color:#fff;' +
       'padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);' +
       'font-family:-apple-system,sans-serif;opacity:0;transition:opacity .2s;';
     document.body.appendChild(t);
@@ -367,12 +367,16 @@
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2600);
   }
 
-  function makeFab(label, bg, onClick) {
+  const FAB_ICONS = {
+    zap: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+    calendar: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>',
+  };
+  function makeFab(iconName, label, bg, onClick) {
     const b = document.createElement('button');
-    b.textContent = label;
+    b.innerHTML = `${FAB_ICONS[iconName] || ''}<span>${label}</span>`;
     b.style.cssText =
-      `display:block;margin-top:10px;background:${bg};color:#fff;border:none;border-radius:24px;` +
-      'padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);' +
+      `display:flex;align-items:center;gap:8px;margin-top:10px;background:${bg};color:#fff;border:none;border-radius:24px;` +
+      'padding:11px 20px;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 4px 14px rgba(34,48,73,.28);' +
       'font-family:-apple-system,sans-serif;';
     b.onclick = onClick;
     return b;
@@ -392,7 +396,7 @@
     // 自動入力（entry フォームがあり、対応サイトで、設定ONのとき）
     if (settings.showAutofillButton !== false && AUTOFILLERS[rule.name] && hasEntryForm()) {
       box.appendChild(
-        makeFab('⚡ 自動入力', '#16a34a', async () => {
+        makeFab('zap', '自動入力', '#223049', async () => {
           const profile = await new Promise((r) =>
             chrome.runtime.sendMessage({ type: 'GET_PROFILE' }, (res) => r((res && res.profile) || {}))
           );
@@ -408,7 +412,7 @@
 
     // 締切抽出（このページの締切を拾って保存）
     box.appendChild(
-      makeFab('📅 締切抽出', '#ea580c', () => {
+      makeFab('calendar', '締切抽出', '#c76b4a', () => {
         const payload = buildPayload(null);
         const cnt = payload.deadlines.length;
         chrome.runtime.sendMessage({ type: 'CAPTURE', payload });

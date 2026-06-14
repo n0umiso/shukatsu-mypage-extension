@@ -10,16 +10,16 @@
   <aside class="sidebar">
     <div class="brand"><h1>就活マイページ</h1><p>ダッシュボード</p></div>
     <nav>
-      <a class="nav" href="dashboard.html#home">🏠 ホーム</a>
-      <a class="nav" href="dashboard.html#list">📋 マイページ</a>
-      <a class="nav" href="dashboard.html#senko">✅ 選考管理</a>
-      <a class="nav" href="dashboard.html#deadlines">📅 締切</a>
-      <a class="nav active" href="profile.html">⚙ 情報・設定</a>
+      <a class="nav" href="dashboard.html#home"><span data-icon="home"></span>ホーム</a>
+      <a class="nav" href="dashboard.html#list"><span data-icon="grid"></span>マイページ</a>
+      <a class="nav" href="dashboard.html#senko"><span data-icon="check"></span>選考管理</a>
+      <a class="nav" href="dashboard.html#deadlines"><span data-icon="calendar"></span>締切</a>
+      <a class="nav active" href="profile.html"><span data-icon="settings"></span>情報・設定</a>
     </nav>
   </aside>
   <div class="content">
   <header class="head">
-    <h1>⚙ 情報入力・設定</h1>
+    <h1><span data-icon="settings"></span>情報入力・設定</h1>
     <div class="head-actions">
       <span id="saved" class="saved"></span>
       <button id="save" class="primary">保存</button>
@@ -34,7 +34,7 @@
   </nav>
 
   <main class="wrap">
-    <p class="lead">ここに登録した情報を、対応サイトの登録フォームへ <b>⚡自動入力</b> ボタンで一括入力します。データは端末内（chrome.storage）に保存されます。</p>
+    <p class="lead">ここに登録した情報を、対応サイトの登録フォームへ <b>自動入力</b> ボタンで一括入力します。データは端末内（chrome.storage）に保存されます。</p>
 
     <!-- 基本情報 -->
     <section id="tab-basic" class="panel">
@@ -125,7 +125,7 @@
           <label>区分<select data-profile="gradKbn"><option value="0">卒業（修了）見込み</option><option value="1">卒業（修了）</option></select></label>
         </div>
       </div>
-      <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>⚡自動入力</b> が該当項目を自動で選びます。高校名など毎回同じ自由記述も、質問文に応じて自動補完します。</p>
+      <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>自動入力</b> が該当項目を自動で選びます。高校名など毎回同じ自由記述も、質問文に応じて自動補完します。</p>
     </section>
 
     <!-- 同期・機能設定 -->
@@ -135,8 +135,8 @@
       </label>
       <label class="check"><input type="checkbox" data-setting="autoSync" /> 保存・取り込みのたびに自動でスプレッドシートへ同期</label>
       <label class="check"><input type="checkbox" data-setting="syncPassword" /> パスワードもスプレッドシートへ送信する</label>
-      <label class="check"><input type="checkbox" data-setting="showAutofillButton" /> 対応サイトに「⚡自動入力」ボタンを表示する</label>
-      <div class="warn">⚠️ パスワードを送信すると Google スプレッドシート上に平文で保存されます。不安な場合はオフに（端末内の保存は維持されます）。</div>
+      <label class="check"><input type="checkbox" data-setting="showAutofillButton" /> 対応サイトに「自動入力」ボタンを表示する</label>
+      <div class="warn">パスワードを送信すると Google スプレッドシート上に平文で保存されます。不安な場合はオフに（端末内の保存は維持されます）。</div>
     </section>
   </main>
   </div>

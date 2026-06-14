@@ -1,5 +1,6 @@
 // ツールバーのポップアップ。素早い起動に特化（編集・全管理はダッシュボード）。
 import { stageLabel } from './lib/stages.js';
+import { icon, applyIcons } from './lib/icons.js';
 
 const $ = (s) => document.querySelector(s);
 const statusEl = $('#status');
@@ -29,7 +30,7 @@ function whenColor(n) {
   if (n === null) return '#9ca3af';
   if (n <= 2) return '#dc2626';
   if (n <= 7) return '#b45309';
-  return '#4f46e5';
+  return '#223049';
 }
 function whenText(n) {
   return n === null ? '' : n < 0 ? '終了' : n === 0 ? '今日' : `あと${n}日`;
@@ -87,7 +88,7 @@ function renderDeadlines() {
   for (const r of near) {
     const row = document.createElement('div');
     row.className = 'row';
-    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button class="go">開く</button>`;
+    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button class="go">${icon('external', 13)}開く</button>`;
     row.querySelector('.dot').style.background = whenColor(r.n);
     row.querySelector('.r-name').textContent = r.e.companyName || r.e.host;
     row.querySelector('.r-sub').textContent = `${r.type}・${r.date}`;
@@ -113,7 +114,7 @@ function renderQuick() {
     body.querySelector('.r-name').textContent = e.companyName || e.host;
     row.appendChild(body);
     const btn = document.createElement('button');
-    btn.className = 'go'; btn.textContent = 'ログイン';
+    btn.className = 'go'; btn.innerHTML = `${icon('login', 13)}ログイン`;
     btn.onclick = () => openLogin(e);
     row.appendChild(btn);
     box.appendChild(row);
@@ -151,6 +152,7 @@ $('#dashboard').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getUR
 $('#capture').onclick = captureCurrent;
 
 (async () => {
+  applyIcons(document);
   [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   await refresh();
 })();

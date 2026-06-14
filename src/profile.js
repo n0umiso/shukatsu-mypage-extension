@@ -1,4 +1,5 @@
 // 情報入力・設定（プロフィール + 同期/機能設定）。
+import { applyIcons } from './lib/icons.js';
 
 const PREFS = [
   '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
@@ -82,7 +83,7 @@ async function save() {
     send({ type: 'SET_PROFILE', patch: profile }),
     send({ type: 'SET_SETTINGS', patch: settingsPatch }),
   ]);
-  $('#saved').textContent = '✓ 保存しました';
+  $('#saved').textContent = '保存しました';
   setTimeout(() => ($('#saved').textContent = ''), 2500);
 }
 
@@ -101,6 +102,7 @@ function initTabs() {
   }
 }
 
+applyIcons(document);
 buildSelects();
 initTabs();
 $('#save').onclick = save;

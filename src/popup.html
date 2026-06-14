@@ -8,8 +8,8 @@
   <header>
     <h1>就活マイページ</h1>
     <div class="acts">
-      <button id="sync" title="スプレッドシート同期">⟳</button>
-      <button id="settings" title="情報・設定">⚙</button>
+      <button id="sync" title="スプレッドシート同期"><span data-icon="refresh"></span></button>
+      <button id="settings" title="情報・設定"><span data-icon="settings"></span></button>
     </div>
   </header>
 
@@ -23,22 +23,22 @@
       <span id="cur-stage" class="cur-stage"></span>
     </div>
     <div class="cur-actions">
-      <button id="cur-login" class="btn-acc">ログイン</button>
+      <button id="cur-login" class="btn-acc"><span data-icon="login" data-size="14"></span>ログイン</button>
       <button id="cur-id" class="btn-sm">ID</button>
       <button id="cur-pw" class="btn-sm">PW</button>
       <button id="cur-capture" class="btn-sm">取込</button>
     </div>
   </section>
 
-  <div class="sec-title">⏰ 締切が近い</div>
+  <div class="sec-title"><span data-icon="clock" data-size="14"></span>締切が近い</div>
   <div id="pop-deadlines" class="rows"></div>
 
-  <div class="sec-title">⚡ クイックログイン</div>
+  <div class="sec-title"><span data-icon="zap" data-size="14"></span>クイックログイン</div>
   <div id="pop-quick" class="rows"></div>
 
   <footer>
-    <button id="capture" class="wide">＋ 今のページを保存</button>
-    <button id="dashboard" class="wide primary">ダッシュボードを開く</button>
+    <button id="capture" class="wide"><span data-icon="plus" data-size="15"></span>今のページを保存</button>
+    <button id="dashboard" class="wide primary"><span data-icon="grid" data-size="15"></span>ダッシュボードを開く</button>
   </footer>
 
   <script type="module" src="popup.js"></script>

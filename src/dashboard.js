@@ -1,5 +1,6 @@
 // 全画面ダッシュボード。ホーム / マイページ / 選考管理 / 締切 / 設定。
 import { STAGES, ALL_STATES, stageProgress, stageLabel, isActive, isOutcome } from './lib/stages.js';
+import { icon, applyIcons } from './lib/icons.js';
 
 const INDUSTRIES = [
   '業界未設定', 'メーカー', '商社', '金融', 'コンサル', 'IT・通信',
@@ -26,7 +27,7 @@ function faviconUrl(url) {
   try { return `https://www.google.com/s2/favicons?sz=64&domain=${new URL(url).hostname}`; }
   catch { return ''; }
 }
-const AVATAR_COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777'];
+const AVATAR_COLORS = ['#223049', '#c76b4a', '#5a6b7b', '#6e7c5e', '#8a6d5a', '#4e6374', '#7a5c6e'];
 function avatarColor(name) {
   let h = 0;
   for (const c of name || '?') h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -57,7 +58,7 @@ function whenColor(n) {
   if (n === null) return '#9ca3af';
   if (n <= 2) return '#dc2626';
   if (n <= 7) return '#b45309';
-  return '#4f46e5';
+  return '#223049';
 }
 function whenText(n) {
   if (n === null) return '';
@@ -111,7 +112,7 @@ function renderHome() {
   for (const r of near) {
     const row = document.createElement('div');
     row.className = 'home-row';
-    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button>開く</button>`;
+    row.innerHTML = `<span class="dot"></span><div class="body"><div class="r-name"></div><div class="r-sub"></div></div><span class="r-when"></span><button>${icon('external', 14)}開く</button>`;
     row.querySelector('.dot').style.background = whenColor(r.n);
     row.querySelector('.r-name').textContent = r.e.companyName || r.e.host;
     row.querySelector('.r-sub').textContent = `${r.type}・${r.date}`;
@@ -136,10 +137,10 @@ function renderHome() {
     body.querySelector('.r-sub').textContent = stageLabel(stageOf(e));
     row.appendChild(body);
     const btn = document.createElement('button');
-    btn.textContent = 'ログイン';
+    btn.innerHTML = `${icon('login', 14)}ログイン`;
     btn.onclick = () => openLogin(e);
     row.appendChild(btn);
-    dl && q.appendChild(row);
+    q.appendChild(row);
   }
 }
 
@@ -228,15 +229,15 @@ function makeField(value, masked) {
   wrap.appendChild(input);
   if (masked) {
     const eye = document.createElement('button');
-    eye.textContent = '👁'; eye.title = '表示';
+    eye.innerHTML = icon('eye', 15); eye.title = '表示';
     eye.onclick = () => { input.type = input.type === 'password' ? 'text' : 'password'; };
     wrap.appendChild(eye);
   }
   const copy = document.createElement('button');
-  copy.textContent = '⧉'; copy.title = 'コピー';
+  copy.innerHTML = icon('copy', 15); copy.title = 'コピー';
   copy.onclick = async () => {
     await navigator.clipboard.writeText(value || '');
-    copy.textContent = '✓'; setTimeout(() => (copy.textContent = '⧉'), 1200);
+    copy.innerHTML = icon('done', 15); setTimeout(() => (copy.innerHTML = icon('copy', 15)), 1200);
   };
   wrap.appendChild(copy);
   return wrap;
@@ -268,7 +269,7 @@ function makeCard(e) {
   }
   head.appendChild(title);
   const del = document.createElement('button');
-  del.className = 'card-del'; del.textContent = '🗑'; del.title = '削除';
+  del.className = 'card-del'; del.innerHTML = icon('trash', 16); del.title = '削除';
   del.onclick = () => removeEntry(e);
   head.appendChild(del);
   card.appendChild(head);
@@ -307,10 +308,10 @@ function makeCard(e) {
   foot.className = 'card-foot';
   const st = document.createElement('span');
   st.className = 'status-pill';
-  st.textContent = `● ${stageOf(e)}`;
+  st.innerHTML = `<span class="pip"></span>${stageOf(e)}`;
   foot.appendChild(st);
   const edit = document.createElement('button');
-  edit.className = 'edit-link'; edit.textContent = '編集';
+  edit.className = 'edit-link'; edit.innerHTML = `${icon('pencil', 13)}編集`;
   edit.onclick = () => openModal(e);
   foot.appendChild(edit);
   card.appendChild(foot);
@@ -333,7 +334,7 @@ function renderGrid() {
   });
   grid.innerHTML = '';
   if (!items.length) {
-    grid.innerHTML = '<div class="empty">該当するマイページがありません。<br>「＋ マイページを追加」または対象サイトでログインして登録してください。</div>';
+    grid.innerHTML = '<div class="empty">該当するマイページがありません。<br>「マイページを追加」または対象サイトでログインして登録してください。</div>';
     return;
   }
   for (const e of items) grid.appendChild(makeCard(e));
@@ -429,6 +430,7 @@ function switchView(view) {
 
 // ---- 初期化 ----
 function init() {
+  applyIcons(document);
   for (const ind of INDUSTRIES) {
     const o = document.createElement('option');
     o.value = ind; o.textContent = ind;

@@ -12,14 +12,14 @@
       <p>ダッシュボード</p>
     </div>
     <nav>
-      <button class="nav active" data-view="home">🏠 ホーム</button>
-      <button class="nav" data-view="list">📋 マイページ</button>
-      <button class="nav" data-view="senko">✅ 選考管理</button>
-      <button class="nav" data-view="deadlines">📅 締切</button>
-      <button class="nav" id="nav-options">⚙ 情報・設定</button>
+      <button class="nav active" data-view="home"><span data-icon="home"></span>ホーム</button>
+      <button class="nav" data-view="list"><span data-icon="grid"></span>マイページ</button>
+      <button class="nav" data-view="senko"><span data-icon="check"></span>選考管理</button>
+      <button class="nav" data-view="deadlines"><span data-icon="calendar"></span>締切</button>
+      <button class="nav" id="nav-options"><span data-icon="settings"></span>情報・設定</button>
     </nav>
     <div class="sync-box">
-      <button id="sync">⟳ スプレッドシート同期</button>
+      <button id="sync"><span data-icon="refresh"></span>スプレッドシート同期</button>
       <p id="sync-info"></p>
     </div>
   </aside>
@@ -38,18 +38,18 @@
         <div class="metric"><span class="m-label">今週の締切</span><span id="m-week" class="m-num warn">0</span></div>
       </div>
 
-      <h3 class="sec"><span>⏰ 締切が近い</span></h3>
+      <h3 class="sec"><span><span data-icon="clock"></span>締切が近い</span></h3>
       <div id="home-deadlines" class="home-list"></div>
 
-      <h3 class="sec"><span>⚡ クイックログイン</span></h3>
+      <h3 class="sec"><span><span data-icon="zap"></span>クイックログイン</span></h3>
       <div id="home-quick" class="home-list"></div>
     </section>
 
     <!-- マイページ一覧 -->
     <section id="view-list" class="hidden">
       <div class="page-head">
-        <h2>📄 マイページ一覧</h2>
-        <button id="add" class="primary">＋ マイページを追加</button>
+        <h2>マイページ一覧</h2>
+        <button id="add" class="primary"><span data-icon="plus"></span>マイページを追加</button>
       </div>
       <p class="lead">ログインを検知すると自動で追加されます。企業名／URLから各マイページへ移動できます。</p>
       <div class="toolbar">
@@ -67,7 +67,7 @@
     <!-- 選考管理 -->
     <section id="view-senko" class="hidden">
       <div class="page-head">
-        <h2>✅ 選考管理</h2>
+        <h2>選考管理</h2>
         <div class="seg">
           <button id="senko-progress" class="seg-btn active">進捗</button>
           <button id="senko-board" class="seg-btn">列</button>
@@ -80,7 +80,7 @@
 
     <!-- 締切 -->
     <section id="view-deadlines" class="hidden">
-      <div class="page-head"><h2>📅 締切カレンダー</h2></div>
+      <div class="page-head"><h2>締切カレンダー</h2></div>
       <p class="lead">登録された締切を日付順に表示します。</p>
       <ul id="deadline-list" class="deadline-list"></ul>
     </section>
