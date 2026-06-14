@@ -10,11 +10,12 @@
   // i-web 等、サイト固有のフィールド名・キー構造に対応する。
   const SITE_RULES = [
     {
-      // ヒューマネージ i-web (mypage.XXXX.i-webs.jp / *.i-webs.jp)
+      // ヒューマネージ i-web 互換 (i-webs.jp + 同じフィールド名を使うサイト全般)
       name: 'i-web',
       test: () =>
         /i-webs?\.jp$/.test(location.hostname) ||
-        !!document.querySelector('input[name="gksid"], input[name="gkspw"]'),
+        !!document.querySelector('input[name="gksid"], input[name="gkspw"]') ||
+        !!document.querySelector('input[name="kname1"], input[name="yname1"]'),
       idSelector: '#gksid, input[name="gksid"]',
       pwSelector: 'input[name="gkspw"]',
     },
