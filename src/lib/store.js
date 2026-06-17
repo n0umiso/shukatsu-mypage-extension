@@ -14,6 +14,7 @@
  *   status: string,        // 選考ステータス
  *   memo: string,
  *   updatedAt: string,     // ISO日時
+ *   lastVisitedAt: string, // 最後にマイページを開いた/確認済みにした日時
  *   deleted?: boolean
  * }
  */
@@ -96,4 +97,15 @@ export async function saveSettings(patch) {
   const settings = { ...current, ...patch };
   await chrome.storage.local.set({ settings });
   return settings;
+}
+
+// ---- リンク集（就活インフラサイト） ----
+export async function getQuickLinks() {
+  const { quickLinks = [] } = await chrome.storage.local.get('quickLinks');
+  return quickLinks;
+}
+
+export async function saveQuickLinks(links) {
+  await chrome.storage.local.set({ quickLinks: links });
+  return links;
 }

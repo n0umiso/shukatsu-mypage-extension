@@ -300,7 +300,13 @@
   // テキスト入力の「質問文」を取得（近接コンテナのテキスト）
   function questionText(el) {
     const p = el.closest('td, dd, li, label, p, tr, div, fieldset');
-    return p ? p.textContent : '';
+    if (!p) return '';
+    // テーブルレイアウト: td 内の input だとラベルが隣の td にあるので行全体を見る
+    if (p.tagName === 'TD') {
+      const row = p.closest('tr');
+      if (row) return row.textContent;
+    }
+    return p.textContent;
   }
 
   // 指定 name のラジオ群から、ラベルが target に一致するものを選択（クリック）
@@ -317,29 +323,62 @@
     return false;
   }
 
+  // 郵便番号を分割欄 or 一括欄に流す
+  function fillPostal(curPostal, homePostal, curName1, curName2, homeName1, homeName2) {
+    let n = 0;
+    const fill = (postal, name1, name2) => {
+      if (!postal) return;
+      const digits = postal.replace(/[-\s　ー－]/g, '');
+      const el1 = document.getElementsByName(name1)[0];
+      const el2 = document.getElementsByName(name2)[0];
+      if (el1 && el2) {
+        // 分割欄: 日本の7桁なら3+4、それ以外は全部name1に入れる
+        if (/^\d{7}$/.test(digits)) {
+          if (setField(name1, digits.slice(0, 3))) n++;
+          if (setField(name2, digits.slice(3))) n++;
+        } else {
+          if (setField(name1, postal)) n++;
+        }
+      } else if (el1) {
+        // 一括欄（name1だけ存在）
+        if (setField(name1, /^\d{7}$/.test(digits) ? digits : postal)) n++;
+      }
+    };
+    fill(curPostal, curName1, curName2);
+    fill(homePostal, homeName1, homeName2);
+    return n;
+  }
+
   // i-web 専用マッピング
   function autofillIweb(p) {
     const map = {
       kname1: p.lastNameKanji, kname2: p.firstNameKanji,
       yname1: p.lastNameKana, yname2: p.firstNameKana,
       ybirth: p.birthYear, mbirth: pad2(p.birthMonth), dbirth: pad2(p.birthDay),
+      myIDdate: p.birthYear && p.birthMonth && p.birthDay
+        ? `${p.birthYear}/${pad2(p.birthMonth)}/${pad2(p.birthDay)}` : undefined,
       syear: p.gradYear, smonth: pad2(p.gradMonth), shikbn: p.gradKbn,
-      // 現住所
-      gyubin1: p.curPostal1, gyubin2: p.curPostal2, gken: prefCode(p.curPref),
+      // 現住所（郵便番号は後で分割/一括判定して流す）
+      gken: prefCode(p.curPref),
       gadrs1: p.curAddr1, gadrs2: p.curAddr2,
       gtel1: p.curTel1, gtel2: p.curTel2, gtel3: p.curTel3,
       kttel1: p.mobile1, kttel2: p.mobile2, kttel3: p.mobile3,
+      bikoa: p.seminarLab, bikob: p.clubCircle,
     };
-    // 帰省先（現住所と同じならコピー）
+    // 帰省先: 「現住所と同じ」チェックボックス（adch）があればクリック、入力は省略
     const same = p.homeSameAsCurrent;
-    map.kyubin1 = same ? p.curPostal1 : p.homePostal1;
-    map.kyubin2 = same ? p.curPostal2 : p.homePostal2;
-    map.kken = prefCode(same ? p.curPref : p.homePref);
-    map.kadrs1 = same ? p.curAddr1 : p.homeAddr1;
-    map.kadrs2 = same ? p.curAddr2 : p.homeAddr2;
-    map.ktel1 = same ? p.curTel1 : p.homeTel1;
-    map.ktel2 = same ? p.curTel2 : p.homeTel2;
-    map.ktel3 = same ? p.curTel3 : p.homeTel3;
+    const adchEl = document.querySelector('input[name="adch"]');
+    if (same && adchEl && !adchEl.checked) {
+      adchEl.click();
+    }
+    if (!same) {
+      map.kken = prefCode(p.homePref);
+      map.kadrs1 = p.homeAddr1;
+      map.kadrs2 = p.homeAddr2;
+      map.ktel1 = p.homeTel1;
+      map.ktel2 = p.homeTel2;
+      map.ktel3 = p.homeTel3;
+    }
     // メール（本文 + 確認欄に同じ値）
     if (p.email) {
       const [a, d] = splitEmail(p.email);
@@ -351,6 +390,11 @@
     }
     let n = 0;
     for (const [name, val] of Object.entries(map)) if (setField(name, val)) n++;
+
+    // 郵便番号: 分割欄(name1+name2)があればそちらへ、なければ一括欄へ
+    // 帰省先が「現住所と同じ」のときは adch チェックに任せるので帰省先郵便番号は省略
+    n += fillPostal(p.curPostal, same ? null : p.homePostal,
+                    'gyubin1', 'gyubin2', 'kyubin1', 'kyubin2');
 
     // 学校選択ウィザード（2〜5ページ目）。各ページに該当する group だけ反応する。
     // ラジオはラベル文字で選択するため、プロフィールは正式名称に合わせる必要がある。
@@ -364,19 +408,41 @@
     ];
     for (const [name, val] of radioGroups) if (selectByLabel(name, val)) n++;
 
-    // 性別: 質問票（enq系）は企業ごとに異なるので、ラベル一致する radio を汎用検索して選択
+    // 五十音（gon）: 大学名ふりがなの先頭文字で選択
+    if (p.universityKana) {
+      const first = (p.universityKana || '').charAt(0);
+      if (first && selectByLabel('gon', first)) n++;
+    }
+
+    // 性別: プロフィールの「男性」→フォーム上の「男」等の短縮にも対応
     if (p.gender) {
       const g = clean(p.gender);
-      const hit = [...document.querySelectorAll('input[type="radio"]')].find(
-        (e) => clean(radioLabelText(e)) === g
-      );
+      const gShort = g.replace(/性$/, '');
+      const allRadios = [...document.querySelectorAll('input[type="radio"]')];
+      const hit = allRadios.find((e) => {
+        const l = clean(radioLabelText(e));
+        return l === g || l === gShort;
+      });
+      if (hit) { hit.click(); n++; }
+    }
+
+    // 就業経験 (enq10 等): ラベル「有り」「無し」で選択
+    if (p.workExperience) {
+      const w = clean(p.workExperience);
+      const allRadios = [...document.querySelectorAll('input[type="radio"]')];
+      const hit = allRadios.find((e) => {
+        const l = clean(radioLabelText(e));
+        return l === w && /enq/.test(e.name);
+      });
       if (hit) { hit.click(); n++; }
     }
 
     // 企業をまたいで繰り返し出る自由記述を、質問文のキーワードで補完する
     const knownNames = new Set(Object.keys(map));
+    const combinedSchool = [p.university, p.faculty, p.department].filter(Boolean).join(' ');
     const textRules = [
       { re: /(出身)?高校(名|学校名)?|出身校/, val: p.highSchool },
+      { re: /学校名.*学部|学部名.*学科/, val: combinedSchool || p.university },
       { re: /大学名|大学院名|学校名/, val: p.university },
       { re: /学部/, val: p.faculty },
       { re: /学科|専攻|コース/, val: p.department },
@@ -476,7 +542,8 @@
       if (!selGroups[m[1]]) selGroups[m[1]] = [];
       selGroups[m[1]].push({ idx: parseInt(m[2]), el: sel });
     }
-    for (const [, items] of Object.entries(selGroups)) {
+    const filledGroups = new Set();
+    for (const [groupName, items] of Object.entries(selGroups)) {
       items.sort((a, b) => a.idx - b.idx);
       if (items.some((i) => i.el.value && i.el.value !== '')) continue;
       if (items.length < 2) continue;
@@ -504,6 +571,49 @@
             n++;
           }
         }
+        filledGroups.add(groupName);
+      }
+    }
+
+    // 3. 学歴日付の構造ベースフォールバック（コンテキストで判別できなかった場合）
+    // セレクト数で分類: 4個=高校（入学年月〜卒業年月）、5個=大学以上（＋卒業区分）
+    const uf4 = [], uf5 = [];
+    for (const [gn, rawItems] of Object.entries(selGroups)) {
+      if (filledGroups.has(gn)) continue;
+      const sorted = [...rawItems].sort((a, b) => a.idx - b.idx);
+      if (sorted.some((i) => i.el.value && i.el.value !== '')) continue;
+      if (sorted.length === 4) uf4.push(sorted);
+      else if (sorted.length >= 5) uf5.push(sorted);
+    }
+    const byDom = (a, b) =>
+      (a[0].el.compareDocumentPosition(b[0].el) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+    uf4.sort(byDom);
+    uf5.sort(byDom);
+
+    const usedText = new Set();
+    const fillGrp = (items, vals, schoolName) => {
+      for (let i = 0; i < items.length && i < vals.length; i++) {
+        items[i].el.value = vals[i]; fire(items[i].el); n++;
+      }
+      if (!schoolName) return;
+      const all = [...document.querySelectorAll('input[type="text"], textarea')];
+      for (let j = all.length - 1; j >= 0; j--) {
+        const inp = all[j];
+        if (usedText.has(inp) || inp.value || !/^enq/.test(inp.name)) continue;
+        if (items[0].el.compareDocumentPosition(inp) & Node.DOCUMENT_POSITION_PRECEDING) {
+          inp.value = schoolName; fire(inp); n++; usedText.add(inp); break;
+        }
+      }
+    };
+
+    if (uf4[0] && hsEnterY > 0)
+      fillGrp(uf4[0], [String(hsEnterY), '04', String(hsGradY), '03'], p.highSchool);
+    if (uf5.length > 0 && uniEnterY > 0) {
+      if (isGrad && uf5.length >= 2) {
+        fillGrp(uf5[0], [String(uniEnterY - 4), '04', String(uniEnterY), '03', '0'], p.university);
+        fillGrp(uf5[1], [String(uniEnterY), '04', String(gradY), pad2(p.gradMonth) || '03', p.gradKbn || '1'], null);
+      } else {
+        fillGrp(uf5[0], [String(uniEnterY), '04', String(gradY), pad2(p.gradMonth) || '03', p.gradKbn || '1'], p.university);
       }
     }
 

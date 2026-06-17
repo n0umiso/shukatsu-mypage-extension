@@ -9,6 +9,8 @@ import {
   saveSettings,
   getProfile,
   saveProfile,
+  getQuickLinks,
+  saveQuickLinks,
 } from './lib/store.js';
 import { syncAll } from './lib/sync.js';
 
@@ -67,13 +69,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           sendResponse({ ok: true, sync: await syncAll() });
           break;
 
-        case 'PENDING_LOGIN':
+        case 'PENDING_LOGIN': {
           // ホーム/カードの「ログイン」押下時。次に開くタブで自動入力する予約。
           await chrome.storage.session.set({
             pendingLogin: { host: msg.host, ts: Date.now() },
           });
+          // lastVisitedAt を記録
+          const visitEntry = await getEntryByHost(msg.host);
+          if (visitEntry) {
+            visitEntry.lastVisitedAt = new Date().toISOString();
+            await saveEntry(visitEntry);
+          }
           sendResponse({ ok: true });
           break;
+        }
 
         case 'CONSUME_LOGIN': {
           // content.js がページ読込時に問い合わせ。予約が一致＆新鮮なら資格情報を返す。
@@ -140,6 +149,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           sendResponse({ ok: true, sync });
           break;
         }
+
+        case 'MARK_VISITED': {
+          // 「確認済み」— 締切がなくてもマイページを見たことを記録
+          const mvEntry = await getEntryByHost(msg.host);
+          if (mvEntry) {
+            mvEntry.lastVisitedAt = new Date().toISOString();
+            await saveEntry(mvEntry);
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+
+        case 'GET_QUICK_LINKS':
+          sendResponse({ ok: true, links: await getQuickLinks() });
+          break;
+
+        case 'SAVE_QUICK_LINKS':
+          sendResponse({ ok: true, links: await saveQuickLinks(msg.links) });
+          break;
 
         default:
           sendResponse({ ok: false, error: `unknown message: ${msg.type}` });

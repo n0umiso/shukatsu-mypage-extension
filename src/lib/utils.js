@@ -21,6 +21,13 @@ export function whenText(n) {
   return n < 0 ? '終了' : n === 0 ? '今日' : `あと${n}日`;
 }
 
+export function daysSince(isoStr) {
+  if (!isoStr) return null;
+  const d = new Date(isoStr);
+  if (isNaN(d)) return null;
+  return Math.floor((new Date().setHours(0, 0, 0, 0) - d.setHours(0, 0, 0, 0)) / 86400000);
+}
+
 export function siteKeyFromUrl(url) {
   try {
     const u = new URL(url);

@@ -78,6 +78,14 @@ async function load() {
     settings = settings || { ...{ gasUrl: '', autoSync: true, syncPassword: false, showAutofillButton: true, syncToken: '' }, ...data.settings };
   }
 
+  // 旧分割フィールドから統合フィールドへマイグレーション
+  if (!profile.curPostal && (profile.curPostal1 || profile.curPostal2)) {
+    profile.curPostal = (profile.curPostal1 || '') + (profile.curPostal2 || '');
+  }
+  if (!profile.homePostal && (profile.homePostal1 || profile.homePostal2)) {
+    profile.homePostal = (profile.homePostal1 || '') + (profile.homePostal2 || '');
+  }
+
   for (const el of document.querySelectorAll('[data-profile]')) {
     setVal(el, profile[el.dataset.profile]);
   }
@@ -132,9 +140,18 @@ function initTabs() {
   }
 }
 
+let saveTimer = null;
+function autoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 600);
+}
+
 applyIcons(document);
 buildSelects();
 initTabs();
 $('#save').onclick = save;
-$('#homeSame').onchange = toggleHome;
+$('#homeSame').onchange = () => { toggleHome(); autoSave(); };
+for (const el of document.querySelectorAll('[data-profile], [data-setting]')) {
+  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', autoSave);
+}
 load();

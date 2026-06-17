@@ -33,21 +33,33 @@
     <!-- ホーム -->
     <section id="view-home">
       <div class="page-head">
-        <h2 id="greeting">ホーム</h2>
+        <h2>今日やること</h2>
         <span id="today" class="muted"></span>
       </div>
 
-      <div class="metrics">
-        <div class="metric"><span class="m-label">登録企業</span><span id="m-total" class="m-num">0</span></div>
-        <div class="metric"><span class="m-label">選考中</span><span id="m-active" class="m-num">0</span></div>
-        <div class="metric"><span class="m-label">今週の締切</span><span id="m-week" class="m-num warn">0</span></div>
+      <div id="home-actions" class="home-list"></div>
+
+      <div class="quick-links-section">
+        <div class="quick-links-head">
+          <h3 class="sec"><span><span data-icon="external"></span>リンク集</span></h3>
+          <button id="edit-links" class="link-edit-btn">編集</button>
+        </div>
+        <div id="quick-links" class="quick-links"></div>
       </div>
 
-      <h3 class="sec"><span><span data-icon="clock"></span>締切が近い</span></h3>
-      <div id="home-deadlines" class="home-list"></div>
-
-      <h3 class="sec"><span><span data-icon="zap"></span>クイックログイン</span></h3>
-      <div id="home-quick" class="home-list"></div>
+      <!-- リンク追加/編集モーダル -->
+      <div id="link-modal" class="modal hidden">
+        <div class="modal-card" style="width:380px">
+          <h3 id="link-modal-title">リンクを追加</h3>
+          <label>名前 <input id="lf-name" type="text" placeholder="例: テストセンター" /></label>
+          <label>URL <input id="lf-url" type="url" placeholder="https://..." /></label>
+          <div class="modal-actions">
+            <button id="link-save" class="primary">保存</button>
+            <button id="link-cancel" class="ghost">キャンセル</button>
+            <button id="link-delete" class="ghost" style="color:var(--danger);margin-left:auto;display:none">削除</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- マイページ一覧 -->

@@ -1,7 +1,7 @@
 // 全画面ダッシュボード。ホーム / マイページ / 選考管理 / 締切 / 設定。
 import { STAGES, ALL_STATES, stageProgress, stageLabel, isActive, isOutcome } from './lib/stages.js';
 import { icon, applyIcons } from './lib/icons.js';
-import { daysUntil, faviconUrl, whenColor, whenText } from './lib/utils.js';
+import { daysUntil, daysSince, faviconUrl, whenColor, whenText } from './lib/utils.js';
 
 const INDUSTRIES = [
   '業界未設定', 'メーカー', '商社', '金融', 'コンサル', 'IT・通信',
@@ -82,89 +82,221 @@ async function removeDeadline(entryId, date, dlType) {
 }
 
 // =====================================================================
-//  ホーム
+//  ホーム — 「今日やること」統合リスト + リンク集
 // =====================================================================
+let quickLinks = [];
+let editingLinkIdx = null;
+
+function buildActionItems() {
+  const items = [];
+
+  // 1) 締切が近い（14日以内・未完了）
+  for (const e of all) {
+    for (const d of e.deadlines || []) {
+      if (d.done) continue;
+      const n = daysUntil(d.date);
+      if (n === null || n < 0 || n > 14) continue;
+      items.push({
+        kind: 'deadline',
+        priority: n,
+        e,
+        type: d.label || d.type || '締切',
+        date: d.date,
+        n,
+        entryId: e.id,
+        dlType: d.type || '',
+      });
+    }
+  }
+
+  // 2) 長期間未確認の企業（選考中のみ、締切アイテムと重複しない企業）
+  const deadlineEntryIds = new Set(items.map((i) => i.entryId));
+  for (const e of all) {
+    if (deadlineEntryIds.has(e.id)) continue;
+    if (!isActive(stageOf(e))) continue;
+    const ago = daysSince(e.lastVisitedAt || e.updatedAt);
+    if (ago === null || ago < 3) continue;
+    items.push({
+      kind: 'unvisited',
+      priority: 100 + (30 - Math.min(ago, 30)),
+      e,
+      ago,
+    });
+  }
+
+  items.sort((a, b) => a.priority - b.priority);
+  return items;
+}
+
 function renderHome() {
-  const name = profile.lastNameKanji ? `${profile.lastNameKanji}さん` : 'ようこそ';
-  $('#greeting').textContent = `こんにちは、${name}`;
   $('#today').textContent = new Date().toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
 
-  const rows = [];
-  for (const e of all) for (const d of e.deadlines || []) rows.push({ e, type: d.label || d.type || '締切', n: daysUntil(d.date), date: d.date, done: !!d.done, entryId: e.id, dlType: d.type || '' });
-  const week = rows.filter((r) => !r.done && r.n !== null && r.n >= 0 && r.n <= 7).length;
+  const items = buildActionItems();
+  const container = $('#home-actions');
+  container.innerHTML = '';
 
-  $('#m-total').textContent = all.length;
-  $('#m-active').textContent = all.filter((e) => isActive(stageOf(e))).length;
-  $('#m-week').textContent = week;
-
-  // 締切が近い（14日以内 / 未完了 / 近い順）
-  const near = rows.filter((r) => !r.done && r.n !== null && r.n >= 0 && r.n <= 14).sort((a, b) => a.n - b.n).slice(0, 6);
-  const dl = $('#home-deadlines');
-  dl.innerHTML = '';
-  if (!near.length) dl.innerHTML = '<div class="home-empty">直近2週間の締切はありません。</div>';
-  for (const r of near) {
-    const row = document.createElement('div');
-    row.className = 'home-row';
-    // dot
-    const dot = document.createElement('span');
-    dot.className = 'dot';
-    dot.style.background = whenColor(r.n);
-    row.appendChild(dot);
-    // body
-    const body = document.createElement('div');
-    body.className = 'body';
-    const rName = document.createElement('div');
-    rName.className = 'r-name';
-    rName.textContent = r.e.companyName || r.e.host;
-    body.appendChild(rName);
-    const rSub = document.createElement('div');
-    rSub.className = 'r-sub';
-    rSub.textContent = `${r.type}・${r.date}`;
-    body.appendChild(rSub);
-    row.appendChild(body);
-    // when
-    const w = document.createElement('span');
-    w.className = 'r-when';
-    w.textContent = whenText(r.n);
-    w.style.color = whenColor(r.n);
-    row.appendChild(w);
-    // action buttons
-    const acts = document.createElement('div');
-    acts.className = 'd-actions';
-    const doneBtn = document.createElement('button');
-    doneBtn.title = '完了'; doneBtn.innerHTML = icon('done', 14);
-    doneBtn.onclick = () => toggleDeadline(r.entryId, r.date, r.dlType);
-    acts.appendChild(doneBtn);
-    row.appendChild(acts);
-    // open button
-    const btn = document.createElement('button');
-    btn.innerHTML = `${icon('external', 14)}開く`;
-    btn.onclick = () => openLogin(r.e);
-    row.appendChild(btn);
-    dl.appendChild(row);
+  if (!items.length) {
+    container.innerHTML = '<div class="home-empty">今日やることはありません。新しい企業を登録するか、締切を追加してください。</div>';
   }
 
-  // クイックログイン
-  const quick = [...all].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 6);
-  const q = $('#home-quick');
-  q.innerHTML = '';
-  if (!quick.length) q.innerHTML = '<div class="home-empty">まだ登録がありません。</div>';
-  for (const e of quick) {
+  for (const item of items.slice(0, 10)) {
     const row = document.createElement('div');
     row.className = 'home-row';
-    row.appendChild(makeLogo(e));
-    const body = document.createElement('div');
-    body.className = 'body';
-    body.innerHTML = `<div class="r-name"></div><div class="r-sub"></div>`;
-    body.querySelector('.r-name').textContent = e.companyName || e.host;
-    body.querySelector('.r-sub').textContent = stageLabel(stageOf(e));
-    row.appendChild(body);
-    const btn = document.createElement('button');
-    btn.innerHTML = `${icon('login', 14)}ログイン`;
-    btn.onclick = () => openLogin(e);
-    row.appendChild(btn);
-    q.appendChild(row);
+
+    if (item.kind === 'deadline') {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = whenColor(item.n);
+      row.appendChild(dot);
+      const body = document.createElement('div');
+      body.className = 'body';
+      const rName = document.createElement('div');
+      rName.className = 'r-name';
+      rName.textContent = item.e.companyName || item.e.host;
+      body.appendChild(rName);
+      const rSub = document.createElement('div');
+      rSub.className = 'r-sub';
+      rSub.textContent = `${item.type}・${item.date}`;
+      body.appendChild(rSub);
+      row.appendChild(body);
+      const w = document.createElement('span');
+      w.className = 'r-when';
+      w.textContent = whenText(item.n);
+      w.style.color = whenColor(item.n);
+      row.appendChild(w);
+      const acts = document.createElement('div');
+      acts.className = 'd-actions';
+      const doneBtn = document.createElement('button');
+      doneBtn.title = '完了'; doneBtn.innerHTML = icon('done', 14);
+      doneBtn.onclick = (ev) => { ev.stopPropagation(); toggleDeadline(item.entryId, item.date, item.dlType); };
+      acts.appendChild(doneBtn);
+      row.appendChild(acts);
+      const btn = document.createElement('button');
+      btn.innerHTML = `${icon('external', 14)}開く`;
+      btn.onclick = () => openLogin(item.e);
+      row.appendChild(btn);
+    } else {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = '#8b5cf6';
+      row.appendChild(dot);
+      const body = document.createElement('div');
+      body.className = 'body';
+      const rName = document.createElement('div');
+      rName.className = 'r-name';
+      rName.textContent = item.e.companyName || item.e.host;
+      body.appendChild(rName);
+      const rSub = document.createElement('div');
+      rSub.className = 'r-sub';
+      rSub.textContent = `${item.ago}日間未確認`;
+      rSub.style.color = '#8b5cf6';
+      body.appendChild(rSub);
+      row.appendChild(body);
+      const checkBtn = document.createElement('button');
+      checkBtn.innerHTML = `${icon('done', 14)}確認済み`;
+      checkBtn.onclick = async (ev) => {
+        ev.stopPropagation();
+        await send({ type: 'MARK_VISITED', host: item.e.host });
+        await refresh();
+      };
+      row.appendChild(checkBtn);
+      const btn = document.createElement('button');
+      btn.innerHTML = `${icon('login', 14)}開く`;
+      btn.onclick = () => openLogin(item.e);
+      row.appendChild(btn);
+    }
+
+    container.appendChild(row);
   }
+
+  renderQuickLinks();
+}
+
+// ---- リンク集 ----
+function renderQuickLinks() {
+  const box = $('#quick-links');
+  box.innerHTML = '';
+  for (let i = 0; i < quickLinks.length; i++) {
+    const lk = quickLinks[i];
+    const a = document.createElement('a');
+    a.className = 'qlink';
+    a.href = lk.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    try {
+      const fav = document.createElement('img');
+      fav.src = `https://www.google.com/s2/favicons?sz=32&domain=${new URL(lk.url).hostname}`;
+      fav.width = 16; fav.height = 16;
+      fav.style.borderRadius = '3px';
+      fav.onerror = () => fav.remove();
+      a.appendChild(fav);
+    } catch { /* invalid url */ }
+    const span = document.createElement('span');
+    span.textContent = lk.name;
+    a.appendChild(span);
+    box.appendChild(a);
+  }
+  const addBtn = document.createElement('button');
+  addBtn.className = 'qlink qlink-add';
+  addBtn.innerHTML = `${icon('plus', 14)} 追加`;
+  addBtn.onclick = () => openLinkModal(null);
+  box.appendChild(addBtn);
+}
+
+function openLinkModal(idx) {
+  editingLinkIdx = idx;
+  const lk = idx !== null ? quickLinks[idx] : null;
+  $('#link-modal-title').textContent = lk ? 'リンクを編集' : 'リンクを追加';
+  $('#lf-name').value = lk?.name || '';
+  $('#lf-url').value = lk?.url || '';
+  $('#link-delete').style.display = lk ? '' : 'none';
+  $('#link-modal').classList.remove('hidden');
+}
+
+function closeLinkModal() {
+  $('#link-modal').classList.add('hidden');
+}
+
+async function saveLinkModal() {
+  const name = $('#lf-name').value.trim();
+  const url = $('#lf-url').value.trim();
+  if (!name || !url) return;
+  if (editingLinkIdx !== null) {
+    quickLinks[editingLinkIdx] = { name, url };
+  } else {
+    quickLinks.push({ name, url });
+  }
+  await send({ type: 'SAVE_QUICK_LINKS', links: quickLinks });
+  closeLinkModal();
+  renderQuickLinks();
+}
+
+async function deleteLinkItem() {
+  if (editingLinkIdx === null) return;
+  quickLinks.splice(editingLinkIdx, 1);
+  await send({ type: 'SAVE_QUICK_LINKS', links: quickLinks });
+  closeLinkModal();
+  renderQuickLinks();
+}
+
+let linkEditMode = false;
+function toggleLinkEditMode() {
+  linkEditMode = !linkEditMode;
+  $('#edit-links').textContent = linkEditMode ? '完了' : '編集';
+  const links = document.querySelectorAll('#quick-links .qlink:not(.qlink-add)');
+  links.forEach((a, i) => {
+    if (linkEditMode) {
+      a.onclick = (ev) => { ev.preventDefault(); openLinkModal(i); };
+      a.style.outline = '2px dashed var(--accent)';
+      a.style.outlineOffset = '-2px';
+    } else {
+      a.onclick = null;
+      a.style.outline = '';
+      a.style.outlineOffset = '';
+    }
+  });
+}
+
 }
 
 // =====================================================================
@@ -616,9 +748,14 @@ function renderDeadlines() {
 
 // ---- データ取得・再描画 ----
 async function refresh() {
-  const [listRes, profRes] = await Promise.all([send({ type: 'LIST' }), send({ type: 'GET_PROFILE' })]);
+  const [listRes, profRes, linksRes] = await Promise.all([
+    send({ type: 'LIST' }),
+    send({ type: 'GET_PROFILE' }),
+    send({ type: 'GET_QUICK_LINKS' }),
+  ]);
   all = listRes.entries || [];
   profile = profRes.profile || {};
+  quickLinks = linksRes.links || [];
   renderHome();
   renderGrid();
   renderSenko();
@@ -739,6 +876,13 @@ function init() {
       $('#sync-info').textContent = `失敗: ${res.sync.error || '不明'}`;
     }
   };
+
+  // リンク集
+  $('#edit-links').onclick = toggleLinkEditMode;
+  $('#link-save').onclick = saveLinkModal;
+  $('#link-cancel').onclick = closeLinkModal;
+  $('#link-delete').onclick = deleteLinkItem;
+  $('#link-modal').onclick = (e) => { if (e.target.id === 'link-modal') closeLinkModal(); };
 
   // エクスポート / インポート
   $('#export-btn').onclick = async () => {

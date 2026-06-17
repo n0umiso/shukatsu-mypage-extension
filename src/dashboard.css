@@ -224,3 +224,19 @@ h3.sec span { display: inline-flex; align-items: center; gap: 8px; }
 .dl-done { opacity: .45; }
 .dl-done .d-date { text-decoration: line-through; }
 .dl-done .d-type { opacity: .6; }
+
+/* ---- リンク集 ---- */
+.quick-links-section { margin-top: 28px; }
+.quick-links-head { display: flex; align-items: center; justify-content: space-between; }
+.quick-links-head h3.sec { margin-bottom: 0; }
+.link-edit-btn { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 4px 8px; }
+.link-edit-btn:hover { color: var(--main); }
+.quick-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.qlink {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 9px; font-size: 13px; color: var(--fg); text-decoration: none; cursor: pointer;
+}
+.qlink:hover { background: var(--main-50); color: var(--main); border-color: var(--main-50); }
+.qlink-add { border-style: dashed; color: var(--muted); }
+.qlink-add:hover { border-color: var(--accent); color: var(--accent); }

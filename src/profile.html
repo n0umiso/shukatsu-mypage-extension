@@ -56,6 +56,10 @@
         </div>
         <label>メールアドレス<input data-profile="email" type="email" placeholder="tanaka.taro@example.com" /></label>
         <label>携帯メール（任意）<input data-profile="email2" type="email" placeholder="tanaka.taro@docomo.ne.jp" /></label>
+        <label>就業経験
+          <select data-profile="workExperience"><option value="">未設定</option><option value="有り">有り</option><option value="無し">無し</option></select>
+        </label>
+        <label>　</label>
       </div>
     </section>
 
@@ -63,10 +67,7 @@
     <section id="tab-contact" class="panel hidden">
       <h2>現住所</h2>
       <div class="grid2">
-        <div class="grid2 sub">
-          <label>郵便番号（前3桁）<input data-profile="curPostal1" maxlength="3" placeholder="100" /></label>
-          <label>（後4桁）<input data-profile="curPostal2" maxlength="4" placeholder="0001" /></label>
-        </div>
+        <label>郵便番号<input data-profile="curPostal" placeholder="1000001（ハイフンなし7桁 or 海外形式）" /></label>
         <label>都道府県<select data-profile="curPref" class="pref"></select></label>
         <label>住所1（市区町村）<input data-profile="curAddr1" placeholder="○○区○○町1-2-3" /></label>
         <label>住所2（建物名など）<input data-profile="curAddr2" placeholder="○○マンション101" /></label>
@@ -86,10 +87,7 @@
         <label class="inline"><input type="checkbox" data-profile="homeSameAsCurrent" id="homeSame" /> 現住所と同じ</label>
       </h2>
       <div class="grid2" id="homeBlock">
-        <div class="grid2 sub">
-          <label>郵便番号（前3桁）<input data-profile="homePostal1" maxlength="3" /></label>
-          <label>（後4桁）<input data-profile="homePostal2" maxlength="4" /></label>
-        </div>
+        <label>郵便番号<input data-profile="homePostal" placeholder="1000001" /></label>
         <label>都道府県<select data-profile="homePref" class="pref"></select></label>
         <label>住所1<input data-profile="homeAddr1" /></label>
         <label>住所2<input data-profile="homeAddr2" /></label>
@@ -114,9 +112,13 @@
         </label>
         <label>大学所在地（都道府県）<select data-profile="uniPref" class="pref"></select></label>
         <label>大学名<input data-profile="university" placeholder="○○大学" /></label>
+        <label>大学名ふりがな<input data-profile="universityKana" placeholder="まるまるだいがく" /></label>
         <label>文理<select data-profile="scienceType"><option value="">未設定</option><option>文系</option><option>理系</option></select></label>
+        <label>　</label>
         <label>学部<input data-profile="faculty" placeholder="△△学部" /></label>
         <label>学科<input data-profile="department" placeholder="□□学科" /></label>
+        <label>ゼミ・研究室<input data-profile="seminarLab" placeholder="○○ゼミ" /></label>
+        <label>クラブ・サークル<input data-profile="clubCircle" placeholder="○○部" /></label>
         <label>高校名<input data-profile="highSchool" placeholder="○○高等学校" /></label>
         <label>高校所在地（都道府県）<select data-profile="highSchoolPref" class="pref"></select></label>
         <label>卒業（見込み）年<select data-profile="gradYear" id="gradYear"></select></label>

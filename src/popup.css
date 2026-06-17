@@ -38,6 +38,8 @@ h1 { font-size: 14px; margin: 0; font-weight: 600; }
 .btn-acc:hover { background: var(--accent-600); }
 .btn-sm { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 10px; font-size: 12px; cursor: pointer; color: var(--fg); }
 .btn-sm:hover { background: var(--surface-2); }
+.btn-visited { display: inline-flex; align-items: center; gap: 3px; color: var(--ok); border-color: var(--ok); }
+.btn-visited:hover { background: var(--ok); color: #fff; }
 
 .sec-title { padding: 13px 14px 6px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
 .rows { display: flex; flex-direction: column; }

@@ -8,41 +8,14 @@
   <header>
     <h1>就活マイページ</h1>
     <div class="acts">
-      <button id="sync" title="スプレッドシート同期"><span data-icon="refresh"></span></button>
       <button id="settings" title="情報・設定"><span data-icon="settings"></span></button>
     </div>
   </header>
 
   <div id="status" class="status"></div>
 
-  <!-- 現在のページ -->
-  <section id="current" class="current hidden">
-    <div class="cur-label">このページ</div>
-    <div class="cur-row">
-      <span id="cur-name" class="cur-name"></span>
-      <span id="cur-stage" class="cur-stage"></span>
-    </div>
-    <div class="cur-actions">
-      <button id="cur-login" class="btn-acc"><span data-icon="login" data-size="14"></span>ログイン</button>
-      <button id="cur-id" class="btn-sm">ID</button>
-      <button id="cur-pw" class="btn-sm">PW</button>
-      <button id="cur-capture" class="btn-sm">取込</button>
-    </div>
-  </section>
-
-  <div class="sec-title"><span data-icon="clock" data-size="14"></span>締切が近い</div>
-  <div id="pop-deadlines" class="rows"></div>
-
-  <div class="sec-title"><span data-icon="zap" data-size="14"></span>クイックログイン</div>
-  <div id="pop-quick" class="rows"></div>
-
   <footer>
     <button id="autofill" class="wide autofill"><span data-icon="zap" data-size="15"></span>自動入力</button>
-    <div class="foot-row">
-      <button id="extract-dl" class="wide accent"><span data-icon="calendar" data-size="15"></span>締切を抽出</button>
-      <button id="capture" class="wide"><span data-icon="plus" data-size="15"></span>保存</button>
-    </div>
-    <button id="dashboard" class="wide primary"><span data-icon="grid" data-size="15"></span>ダッシュボードを開く</button>
   </footer>
 
   <script type="module" src="popup.js"></script>
