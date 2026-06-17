@@ -322,16 +322,23 @@
   function clickButtonNear(fieldName, buttonText) {
     const field = document.querySelector(`[name="${fieldName}"]`);
     if (!field) return false;
-    const containers = [];
+    // 1) 親を辿って探す
     let cur = field.parentElement;
-    for (let i = 0; i < 5 && cur; i++) { containers.push(cur); cur = cur.parentElement; }
-    for (const c of containers) {
-      const btns = [...c.querySelectorAll('input[type="button"], input[type="submit"], button')];
+    for (let i = 0; i < 8 && cur; i++) {
+      const btns = [...cur.querySelectorAll('input[type="button"], input[type="submit"], button')];
       const btn = btns.find((b) => (b.value || b.textContent || '').includes(buttonText));
       if (btn) { btn.click(); return true; }
+      cur = cur.parentElement;
     }
+    // 2) ページ全体から該当テキストのボタンを探す（フォールバック）
+    const allBtns = [...document.querySelectorAll('input[type="button"], input[type="submit"], button')];
+    const btn = allBtns.find((b) => (b.value || b.textContent || '').includes(buttonText));
+    if (btn) { btn.click(); return true; }
     return false;
   }
+
+  // 短いディレイ
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // select から名前でマッチする option を選択（部分一致対応）
   function selectOptionByText(selectName, text) {
@@ -819,14 +826,16 @@
       }
     }
 
-    // 学校区分（大学院 / 大学）
+    // 学校区分（大学院 / 大学 / 短期大学 / 高等専門学校 / 専門学校）
     const isGrad = (p.schoolType || '').includes('大学院');
     if (p.schoolType) {
-      if (isGrad) {
-        selectByLabel('kubun', '大学院') && n++;
-      } else {
-        selectByLabel('kubun', '大学') && n++;
-      }
+      const st = p.schoolType;
+      const kubunLabel = isGrad ? '大学院'
+        : st.includes('短期') ? '短期大学'
+        : st.includes('高等専門') ? '高等専門学校'
+        : st.includes('専門学校') ? '専門学校'
+        : '大学';
+      if (selectByLabel('kubun', kubunLabel)) n++;
     }
 
     // 修士/博士
@@ -890,8 +899,92 @@
       if (hsShort && setField('koko_word', hsShort)) n++;
     }
 
+    // memo フィールド（企業固有の追加質問）を質問文から推定入力
+    n += fillMemoFieldsAxol(p, setSelect, isGrad, gradY, uniEnterY, hsEnterY, hsGradY);
+
     // 非同期: 学校検索→選択→学部→学科の連鎖
     asyncSchoolSearch(p);
+
+    return n;
+  }
+
+  // axol 系 memo フィールドを質問文キーワードで推定入力
+  function fillMemoFieldsAxol(p, setSelect, isGrad, gradY, uniEnterY, hsEnterY, hsGradY) {
+    let n = 0;
+    const fire = (el) => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // フィールドの質問文を取得
+    function qText(el) {
+      let q = el.placeholder || '';
+      const row = el.closest('tr, div, td, dd, li, fieldset, section');
+      if (row) q += ' ' + row.textContent;
+      return q;
+    }
+
+    // --- テキスト/テキストエリア ---
+    for (const el of document.querySelectorAll('input[type="text"][name^="memo"], textarea[name^="memo"]')) {
+      if (el.value) continue;
+      const q = qText(el);
+      let val = null;
+      if (/高校名|高校.*正式名称/.test(q)) val = p.highSchool;
+      else if (/コース|課程/.test(q) && /高校/.test(q)) val = p.highSchoolCourse || '';
+      if (val) { el.value = val; fire(el); n++; }
+    }
+
+    // --- 日付セレクト (memo*_Y / memo*_m) ---
+    const dateGroups = {};
+    for (const sel of document.querySelectorAll('select[name^="memo"]')) {
+      const m = sel.name.match(/^(memo\d+)_(Y|m)$/);
+      if (!m) continue;
+      if (!dateGroups[m[1]]) dateGroups[m[1]] = {};
+      dateGroups[m[1]][m[2]] = sel;
+    }
+    for (const [, sels] of Object.entries(dateGroups)) {
+      if (!sels.Y || !sels.m) continue;
+      if (sels.Y.value && sels.Y.value !== '' && sels.Y.value !== '--') continue;
+      const q = qText(sels.Y);
+      let year = null, month = null;
+      if (/高校.*入学/.test(q) && hsEnterY > 0) { year = hsEnterY; month = '04'; }
+      else if (/高校.*卒業/.test(q) && hsGradY > 0) { year = hsGradY; month = '03'; }
+      else if (/①.*入学|①上記.*入学/.test(q) && isGrad && uniEnterY > 0) {
+        year = uniEnterY - 4; month = '04';
+      }
+      else if (/①.*卒業|①上記.*卒業/.test(q) && isGrad && uniEnterY > 0) {
+        year = uniEnterY; month = '03';
+      }
+      if (year != null) {
+        sels.Y.value = String(year); fire(sels.Y);
+        sels.m.value = String(parseInt(month)); fire(sels.m);
+        n += 2;
+      }
+    }
+
+    // --- ラジオ ---
+    const memoRadioNames = new Set();
+    for (const r of document.querySelectorAll('input[type="radio"][name^="memo"]')) {
+      memoRadioNames.add(r.name);
+    }
+    for (const name of memoRadioNames) {
+      const radios = [...document.querySelectorAll(`input[type="radio"][name="${name}"]`)];
+      if (radios.some((r) => r.checked)) continue;
+      const q = qText(radios[0]);
+      let target = null;
+      if (/学位/.test(q)) {
+        target = isGrad ? ((p.schoolType || '').includes('博士') ? '博士' : '修士') : '学士';
+      } else if (/就業経験|正規雇用/.test(q)) {
+        if (p.workExperience === '有り') target = 'ある';
+        else if (p.workExperience === '無し') target = 'ない';
+      } else if (/中間.*学歴|高校卒業後.*卒業/.test(q)) {
+        target = isGrad ? 'あり' : 'なし';
+      }
+      if (target) {
+        const hit = radios.find((r) => clean(radioLabelText(r)).includes(clean(target)));
+        if (hit) { hit.click(); n++; }
+      }
+    }
 
     return n;
   }
@@ -900,15 +993,19 @@
     let asyncN = 0;
 
     // --- 大学検索 ---
-    if (p.universityKana && p.university) {
+    const initialEl = document.querySelector('input[name="initial"]');
+    if (initialEl && initialEl.value && p.university) {
       clickButtonNear('initial', '学校検索') || clickButtonNear('initial', '検索');
-      if (await waitForOptions('dcd')) {
+      await delay(500);
+      if (await waitForOptions('dcd', 5000)) {
         if (selectOptionByText('dcd', p.university)) {
           asyncN++;
-          if (p.faculty && await waitForOptions('bcd', 4000, true)) {
+          await delay(300);
+          if (p.faculty && await waitForOptions('bcd', 5000, true)) {
             if (selectOptionByText('bcd', p.faculty)) {
               asyncN++;
-              if (p.department && await waitForOptions('paxcd', 4000, true)) {
+              await delay(300);
+              if (p.department && await waitForOptions('paxcd', 5000, true)) {
                 if (selectOptionByText('paxcd', p.department)) {
                   asyncN++;
                 }
@@ -919,10 +1016,12 @@
       }
     }
 
-    // --- 高校検索 ---
-    if (p.highSchool) {
+    // --- 高校検索（koko_word 方式） ---
+    const kokoWordEl = document.querySelector('input[name="koko_word"]');
+    if (kokoWordEl && kokoWordEl.value && p.highSchool) {
       clickButtonNear('koko_word', '高校検索') || clickButtonNear('koko_word', '検索');
-      if (await waitForOptions('kokocd')) {
+      await delay(500);
+      if (await waitForOptions('kokocd', 5000)) {
         if (selectOptionByText('kokocd', p.highSchool)) {
           asyncN++;
         }
