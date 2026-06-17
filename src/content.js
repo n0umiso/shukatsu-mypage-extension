@@ -277,16 +277,23 @@
   }
   const pad2 = (v) => (v === '' || v == null ? '' : String(v).padStart(2, '0'));
 
-  // 1つの name に値を入れ、input/change を発火（サイト側の onchange を起動）
+  // 1つの name に値を入れ、input/change/blur を発火（サイト側のバリデーションを起動）
   function setField(name, value) {
     if (value == null || value === '') return false;
     const els = document.getElementsByName(name);
     let touched = false;
     for (const el of els) {
-      if (el.type === 'checkbox') el.checked = !!value;
-      else el.value = String(value);
+      if (el.type === 'radio' || (el.type === 'checkbox' && typeof value === 'boolean')) {
+        el.checked = !!value;
+      } else if (el.type === 'checkbox') {
+        el.checked = !!value;
+      } else {
+        el.value = String(value);
+      }
+      el.dispatchEvent(new Event('focus', { bubbles: true }));
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
       touched = true;
     }
     return touched;
@@ -352,8 +359,10 @@
     const hit = exact || partial;
     if (!hit) return false;
     el.value = hit.value;
+    el.dispatchEvent(new Event('focus', { bubbles: true }));
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('blur', { bubbles: true }));
     return true;
   }
 
@@ -395,7 +404,15 @@
   function splitPhone(unified, part1, part2, part3) {
     if (unified) {
       const parts = unified.split(/[-ー－]/);
-      return parts.length >= 3 ? parts.slice(0, 3) : parts.length === 2 ? [parts[0], parts[1], ''] : [unified, '', ''];
+      if (parts.length >= 3) return parts.slice(0, 3);
+      if (parts.length === 2 && parts[1].length > 0) return [parts[0], parts[1], ''];
+      // ハイフンなし: 数字列から日本の電話番号パターンで分割
+      const d = unified.replace(/\D/g, '');
+      if (/^0[5789]0/.test(d) && d.length === 11) return [d.slice(0, 3), d.slice(3, 7), d.slice(7)];
+      if (/^0120/.test(d) && d.length === 10) return [d.slice(0, 4), d.slice(4, 7), d.slice(7)];
+      if (/^0\d/.test(d) && d.length === 10) return [d.slice(0, 2), d.slice(2, 6), d.slice(6)];
+      if (/^0\d/.test(d) && d.length === 11) return [d.slice(0, 3), d.slice(3, 7), d.slice(7)];
+      return [unified, '', ''];
     }
     if (part1 || part2 || part3) return [part1 || '', part2 || '', part3 || ''];
     return null;
@@ -439,12 +456,12 @@
       // 現住所（郵便番号は後で分割/一括判定して流す）
       gken: prefCode(p.curPref),
       gadrs1: p.curAddr1, gadrs2: p.curAddr2,
-      gtel1: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[0],
-      gtel2: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[1],
-      gtel3: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[2],
-      kttel1: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[0],
-      kttel2: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[1],
-      kttel3: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[2],
+      gtel1: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) ?? [])[0],
+      gtel2: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) ?? [])[1],
+      gtel3: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) ?? [])[2],
+      kttel1: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) ?? [])[0],
+      kttel2: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) ?? [])[1],
+      kttel3: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) ?? [])[2],
       bikoa: p.seminarLab, bikob: p.clubCircle,
     };
     // 帰省先: 「現住所と同じ」チェックボックス（adch）があればクリック、入力は省略
@@ -912,8 +929,10 @@
   function fillMemoFieldsAxol(p, setSelect, isGrad, gradY, uniEnterY, hsEnterY, hsGradY) {
     let n = 0;
     const fire = (el) => {
+      el.dispatchEvent(new Event('focus', { bubbles: true }));
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
     };
 
     // フィールドの質問文を取得
