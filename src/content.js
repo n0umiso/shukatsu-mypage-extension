@@ -21,6 +21,14 @@
       idSelector: '#gksid, input[name="gksid"]',
       pwSelector: 'input[name="gkspw"]',
     },
+    {
+      // kanji_sei / kana_sei 系フォーム（マイナビ等）
+      name: 'mynaviStyle',
+      test: () =>
+        !!document.querySelector('input[name="kanji_sei"], input[name="kana_sei"]'),
+      idSelector: 'input[name="email"]',
+      pwSelector: 'input[type="password"]',
+    },
   ];
 
   function activeRule() {
@@ -289,6 +297,59 @@
     return at > 0 ? [email.slice(0, at), email.slice(at + 1)] : ['', ''];
   }
 
+  // select の options が読み込まれるのを待つ（検索ボタン押下後の非同期用）
+  // expectRefresh=true のとき、既存 options が一度クリアされて再読込されるのを待つ
+  function waitForOptions(selectName, timeoutMs = 4000, expectRefresh = false) {
+    return new Promise((resolve) => {
+      const el = document.querySelector(`select[name="${selectName}"]`);
+      if (!el) { resolve(false); return; }
+      const hasReal = () => [...el.options].some((o) => o.value && o.value !== '');
+      if (!expectRefresh && hasReal()) { resolve(true); return; }
+      let cleared = !expectRefresh;
+      const observer = new MutationObserver(() => {
+        if (expectRefresh && !cleared) { cleared = true; return; }
+        if (hasReal()) { observer.disconnect(); resolve(true); }
+      });
+      observer.observe(el, { childList: true, subtree: true });
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(hasReal());
+      }, timeoutMs);
+    });
+  }
+
+  // フィールド近傍のボタンをテキストで探してクリック
+  function clickButtonNear(fieldName, buttonText) {
+    const field = document.querySelector(`[name="${fieldName}"]`);
+    if (!field) return false;
+    const containers = [];
+    let cur = field.parentElement;
+    for (let i = 0; i < 5 && cur; i++) { containers.push(cur); cur = cur.parentElement; }
+    for (const c of containers) {
+      const btns = [...c.querySelectorAll('input[type="button"], input[type="submit"], button')];
+      const btn = btns.find((b) => (b.value || b.textContent || '').includes(buttonText));
+      if (btn) { btn.click(); return true; }
+    }
+    return false;
+  }
+
+  // select から名前でマッチする option を選択（部分一致対応）
+  function selectOptionByText(selectName, text) {
+    if (!text) return false;
+    const el = document.querySelector(`select[name="${selectName}"]`);
+    if (!el) return false;
+    const t = text.trim();
+    const opts = [...el.options].filter((o) => o.value && o.value !== '');
+    const exact = opts.find((o) => o.textContent.trim() === t);
+    const partial = !exact && opts.find((o) => o.textContent.includes(t) || t.includes(o.textContent.trim()));
+    const hit = exact || partial;
+    if (!hit) return false;
+    el.value = hit.value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+
   // ラジオ/チェックの「ラベル文字」を取得（i-web は value でなくラベルで選ぶ）
   function radioLabelText(el) {
     if (el.labels && el.labels.length) return el.labels[0].textContent || '';
@@ -321,6 +382,16 @@
       els.find((e) => clean(radioLabelText(e)).includes(t));
     if (el) { el.click(); return true; }
     return false;
+  }
+
+  // 電話番号文字列 "03-1234-5678" → ["03","1234","5678"]、統合/旧分割両対応
+  function splitPhone(unified, part1, part2, part3) {
+    if (unified) {
+      const parts = unified.split(/[-ー－]/);
+      return parts.length >= 3 ? parts.slice(0, 3) : parts.length === 2 ? [parts[0], parts[1], ''] : [unified, '', ''];
+    }
+    if (part1 || part2 || part3) return [part1 || '', part2 || '', part3 || ''];
+    return null;
   }
 
   // 郵便番号を分割欄 or 一括欄に流す
@@ -361,8 +432,12 @@
       // 現住所（郵便番号は後で分割/一括判定して流す）
       gken: prefCode(p.curPref),
       gadrs1: p.curAddr1, gadrs2: p.curAddr2,
-      gtel1: p.curTel1, gtel2: p.curTel2, gtel3: p.curTel3,
-      kttel1: p.mobile1, kttel2: p.mobile2, kttel3: p.mobile3,
+      gtel1: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[0],
+      gtel2: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[1],
+      gtel3: (splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3) || [])[2],
+      kttel1: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[0],
+      kttel2: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[1],
+      kttel3: (splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3) || [])[2],
       bikoa: p.seminarLab, bikob: p.clubCircle,
     };
     // 帰省先: 「現住所と同じ」チェックボックス（adch）があればクリック、入力は省略
@@ -375,9 +450,8 @@
       map.kken = prefCode(p.homePref);
       map.kadrs1 = p.homeAddr1;
       map.kadrs2 = p.homeAddr2;
-      map.ktel1 = p.homeTel1;
-      map.ktel2 = p.homeTel2;
-      map.ktel3 = p.homeTel3;
+      const ht = splitPhone(p.homeTel, p.homeTel1, p.homeTel2, p.homeTel3);
+      if (ht) { map.ktel1 = ht[0]; map.ktel2 = ht[1]; map.ktel3 = ht[2]; }
     }
     // メール（本文 + 確認欄に同じ値）
     if (p.email) {
@@ -620,14 +694,255 @@
     return n;
   }
 
-  const AUTOFILLERS = { 'i-web': autofillIweb };
+  // kanji_sei / kana_sei 系フォーム（マイナビ等）の自動入力
+  function autofillMynaviStyle(p) {
+    let n = 0;
+    const fire = (el) => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // select に値をセットし change を発火
+    function setSelect(name, value) {
+      if (value == null || value === '') return false;
+      const el = document.querySelector(`select[name="${name}"]`);
+      if (!el) return false;
+      const v = String(value);
+      for (const opt of el.options) {
+        if (opt.value === v || opt.textContent.trim() === v) {
+          el.value = opt.value;
+          fire(el);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // テキスト入力
+    const textMap = {
+      kanji_sei: p.lastNameKanji,
+      kanji_na: p.firstNameKanji,
+      kana_sei: p.lastNameKana,
+      kana_na: p.firstNameKana,
+      roma_sei: p.lastNameRoman,
+      roma_na: p.firstNameRoman,
+      jushog1: p.curAddr1,
+      jushog2: p.curAddr2,
+      jushog3: p.curAddr3,
+      email: p.email,
+      email2: p.email,
+      kmail: p.email2,
+      kmail2: p.email2,
+      zemi: p.seminarLab,
+      club: p.clubCircle,
+      dname: p.university,
+      bname: p.faculty,
+      kname: p.department,
+      koko_name: p.highSchool,
+    };
+    for (const [name, val] of Object.entries(textMap)) if (setField(name, val)) n++;
+
+    // 性別（ラジオ）
+    if (p.gender) {
+      if (selectByLabel('sex', p.gender)) n++;
+    }
+
+    // 生年月日（セレクト）
+    if (setSelect('birth_Y', p.birthYear)) n++;
+    if (setSelect('birth_m', pad2(p.birthMonth))) n++;
+    if (setSelect('birth_d', pad2(p.birthDay))) n++;
+
+    // 郵便番号（現住所: yubing_h + yubing_l）
+    if (p.curPostal) {
+      const digits = p.curPostal.replace(/[-\s　ー－]/g, '');
+      if (/^\d{7}$/.test(digits)) {
+        if (setField('yubing_h', digits.slice(0, 3))) n++;
+        if (setField('yubing_l', digits.slice(3))) n++;
+      } else {
+        if (setField('yubing_kaigai', p.curPostal)) n++;
+      }
+    }
+
+    // 都道府県（現住所）
+    if (p.curPref) {
+      const code = PREFS.indexOf(p.curPref.trim()) + 1;
+      if (code > 0 && setSelect('keng', String(code))) n++;
+    }
+
+    // 電話番号（現住所）
+    const ct = splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3);
+    if (ct) {
+      if (setField('telg_h', ct[0])) n++;
+      if (setField('telg_m', ct[1])) n++;
+      if (setField('telg_l', ct[2])) n++;
+    }
+
+    // 携帯
+    const mb = splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3);
+    if (mb) {
+      if (setField('keitai_h', mb[0])) n++;
+      if (setField('keitai_m', mb[1])) n++;
+      if (setField('keitai_l', mb[2])) n++;
+    }
+
+    // 帰省先: 「現住所と同じ」チェックボックス
+    const same = p.homeSameAsCurrent;
+    const sameEl = document.querySelector('input[name="jushosame"]');
+    if (same && sameEl && !sameEl.checked) {
+      sameEl.click();
+      n++;
+    }
+    if (!same) {
+      // 帰省先郵便番号
+      if (p.homePostal) {
+        const digits = p.homePostal.replace(/[-\s　ー－]/g, '');
+        if (/^\d{7}$/.test(digits)) {
+          if (setField('yubink_h', digits.slice(0, 3))) n++;
+          if (setField('yubink_l', digits.slice(3))) n++;
+        } else {
+          if (setField('yubink_kaigai', p.homePostal)) n++;
+        }
+      }
+      // 帰省先都道府県
+      if (p.homePref) {
+        const code = PREFS.indexOf(p.homePref.trim()) + 1;
+        if (code > 0 && setSelect('kenk', String(code))) n++;
+      }
+      if (setField('jushok1', p.homeAddr1)) n++;
+      if (setField('jushok2', p.homeAddr2)) n++;
+      if (setField('jushok3', p.homeAddr3)) n++;
+      const ht = splitPhone(p.homeTel, p.homeTel1, p.homeTel2, p.homeTel3);
+      if (ht) {
+        if (setField('telk_h', ht[0])) n++;
+        if (setField('telk_m', ht[1])) n++;
+        if (setField('telk_l', ht[2])) n++;
+      }
+    }
+
+    // 学校区分（大学院 / 大学）
+    const isGrad = (p.schoolType || '').includes('大学院');
+    if (p.schoolType) {
+      if (isGrad) {
+        selectByLabel('kubun', '大学院') && n++;
+      } else {
+        selectByLabel('kubun', '大学') && n++;
+      }
+    }
+
+    // 修士/博士
+    if (isGrad) {
+      if ((p.schoolType || '').includes('博士')) {
+        selectByLabel('degree', '博士') && n++;
+      } else {
+        selectByLabel('degree', '修士') && n++;
+      }
+    }
+
+    // 国公私立
+    if (p.uniType) {
+      if (selectByLabel('kokushi', p.uniType)) n++;
+    }
+
+    // 学歴タイムライン
+    const gradY = parseInt(p.gradYear) || 0;
+    const uniLen = isGrad ? 2 : (p.schoolType || '').includes('短期') ? 2 : 4;
+    const uniEnterY = gradY > 0 ? gradY - uniLen : 0;
+    const hsGradY = uniEnterY > 0 ? uniEnterY : 0;
+    const hsEnterY = hsGradY > 0 ? hsGradY - 3 : 0;
+
+    // 大学入学〜卒業年月
+    if (uniEnterY > 0) {
+      if (setSelect('school_from_Y', String(uniEnterY))) n++;
+      if (setSelect('school_from_m', '04')) n++;
+    }
+    if (gradY > 0) {
+      if (setSelect('school_to_Y', String(gradY))) n++;
+      if (setSelect('school_to_m', pad2(p.gradMonth) || '03')) n++;
+    }
+
+    // 高校所在地
+    if (p.highSchoolPref) {
+      const code = PREFS.indexOf(p.highSchoolPref.trim()) + 1;
+      if (code > 0 && setSelect('koko_ken', String(code))) n++;
+    }
+
+    // 高校入学〜卒業年月
+    if (hsEnterY > 0) {
+      if (setSelect('koko_from_Y', String(hsEnterY))) n++;
+      if (setSelect('koko_from_m', '04')) n++;
+    }
+    if (hsGradY > 0) {
+      if (setSelect('koko_to_Y', String(hsGradY))) n++;
+      if (setSelect('koko_to_m', '03')) n++;
+    }
+
+    // 学校名の頭文字（ひらがな→カタカナ変換して先頭1文字）
+    if (p.universityKana) {
+      const kata = p.universityKana.replace(/[ぁ-ゖ]/g, (c) =>
+        String.fromCharCode(c.charCodeAt(0) + 0x60));
+      const first = kata.charAt(0);
+      if (first && setField('initial', first)) n++;
+    }
+
+    // 高校名の一部（検索キーワード: 「高等学校」「高校」を除いた短縮名で検索）
+    if (p.highSchool) {
+      const hsShort = p.highSchool.replace(/(高等学校|高校)$/, '').trim();
+      if (hsShort && setField('koko_word', hsShort)) n++;
+    }
+
+    // 非同期: 学校検索→選択→学部→学科の連鎖
+    asyncSchoolSearch(p);
+
+    return n;
+  }
+
+  async function asyncSchoolSearch(p) {
+    let asyncN = 0;
+
+    // --- 大学検索 ---
+    if (p.universityKana && p.university) {
+      clickButtonNear('initial', '学校検索') || clickButtonNear('initial', '検索');
+      if (await waitForOptions('dcd')) {
+        if (selectOptionByText('dcd', p.university)) {
+          asyncN++;
+          if (p.faculty && await waitForOptions('bcd', 4000, true)) {
+            if (selectOptionByText('bcd', p.faculty)) {
+              asyncN++;
+              if (p.department && await waitForOptions('paxcd', 4000, true)) {
+                if (selectOptionByText('paxcd', p.department)) {
+                  asyncN++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // --- 高校検索 ---
+    if (p.highSchool) {
+      clickButtonNear('koko_word', '高校検索') || clickButtonNear('koko_word', '検索');
+      if (await waitForOptions('kokocd')) {
+        if (selectOptionByText('kokocd', p.highSchool)) {
+          asyncN++;
+        }
+      }
+    }
+
+    if (asyncN > 0) {
+      toast(`追加で${asyncN}項目を自動選択しました`);
+    }
+  }
+
+  const AUTOFILLERS = { 'i-web': autofillIweb, 'mynaviStyle': autofillMynaviStyle };
 
   // entry フォームか（自動入力ボタンを出すか）の判定
   function hasEntryForm() {
     // 基本情報ページ + 学校選択ウィザード + アンケートページのいずれか
     return !!document.querySelector(
       'input[name="kname1"], input[name="yname1"], input[name="gkbn"], input[name="dken"], ' +
-      'input[name="daicd"], input[name="gkbcd"], input[name="gkkcd"], input[name="s_brkbn"], input[name^="enq"]'
+      'input[name="daicd"], input[name="gkbcd"], input[name="gkkcd"], input[name="s_brkbn"], input[name^="enq"], ' +
+      'input[name="kanji_sei"], input[name="kana_sei"]'
     );
   }
 

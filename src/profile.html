@@ -71,16 +71,10 @@
         <label>都道府県<select data-profile="curPref" class="pref"></select></label>
         <label>住所1（市区町村）<input data-profile="curAddr1" placeholder="○○区○○町1-2-3" /></label>
         <label>住所2（建物名など）<input data-profile="curAddr2" placeholder="○○マンション101" /></label>
-        <div class="grid3 sub">
-          <label>電話<input data-profile="curTel1" placeholder="03" /></label>
-          <label>　<input data-profile="curTel2" placeholder="1234" /></label>
-          <label>　<input data-profile="curTel3" placeholder="5678" /></label>
-        </div>
-        <div class="grid3 sub">
-          <label>携帯<input data-profile="mobile1" placeholder="090" /></label>
-          <label>　<input data-profile="mobile2" placeholder="1234" /></label>
-          <label>　<input data-profile="mobile3" placeholder="5678" /></label>
-        </div>
+        <label>住所3（任意）<input data-profile="curAddr3" placeholder="号室など（3欄目があるサイト用）" /></label>
+        <label>　</label>
+        <label>電話番号<input data-profile="curTel" placeholder="03-1234-5678（ハイフン区切り）" /></label>
+        <label>携帯番号<input data-profile="mobile" placeholder="090-1234-5678（ハイフン区切り）" /></label>
       </div>
 
       <h2>帰省先住所
@@ -91,11 +85,8 @@
         <label>都道府県<select data-profile="homePref" class="pref"></select></label>
         <label>住所1<input data-profile="homeAddr1" /></label>
         <label>住所2<input data-profile="homeAddr2" /></label>
-        <div class="grid3 sub">
-          <label>電話<input data-profile="homeTel1" /></label>
-          <label>　<input data-profile="homeTel2" /></label>
-          <label>　<input data-profile="homeTel3" /></label>
-        </div>
+        <label>住所3（任意）<input data-profile="homeAddr3" /></label>
+        <label>電話番号<input data-profile="homeTel" placeholder="0463-12-3456（ハイフン区切り）" /></label>
       </div>
     </section>
 
@@ -109,6 +100,9 @@
             <option>短期大学</option><option>高等専門学校</option><option>専門学校</option>
             <option>外国大学日本校</option><option>外国大学</option>
           </select>
+        </label>
+        <label>国公私立
+          <select data-profile="uniType"><option value="">未設定</option><option>国立</option><option>公立</option><option>私立</option></select>
         </label>
         <label>大学所在地（都道府県）<select data-profile="uniPref" class="pref"></select></label>
         <label>大学名<input data-profile="university" placeholder="○○大学" /></label>

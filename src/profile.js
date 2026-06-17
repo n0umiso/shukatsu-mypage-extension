@@ -85,6 +85,15 @@ async function load() {
   if (!profile.homePostal && (profile.homePostal1 || profile.homePostal2)) {
     profile.homePostal = (profile.homePostal1 || '') + (profile.homePostal2 || '');
   }
+  if (!profile.curTel && (profile.curTel1 || profile.curTel2 || profile.curTel3)) {
+    profile.curTel = [profile.curTel1, profile.curTel2, profile.curTel3].filter(Boolean).join('-');
+  }
+  if (!profile.mobile && (profile.mobile1 || profile.mobile2 || profile.mobile3)) {
+    profile.mobile = [profile.mobile1, profile.mobile2, profile.mobile3].filter(Boolean).join('-');
+  }
+  if (!profile.homeTel && (profile.homeTel1 || profile.homeTel2 || profile.homeTel3)) {
+    profile.homeTel = [profile.homeTel1, profile.homeTel2, profile.homeTel3].filter(Boolean).join('-');
+  }
 
   for (const el of document.querySelectorAll('[data-profile]')) {
     setVal(el, profile[el.dataset.profile]);
