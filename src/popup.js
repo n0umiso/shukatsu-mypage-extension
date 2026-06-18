@@ -30,7 +30,7 @@ $('#autofill').onclick = async () => {
   const profile = profileRes?.profile;
   if (!profile || !Object.keys(profile).length) {
     setStatus('プロフィール未登録です', 'err');
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html#settings') });
     window.close();
     return;
   }
@@ -44,7 +44,7 @@ $('#autofill').onclick = async () => {
   }
   setStatus(`${resp.filled}項目を自動入力しました`, 'ok');
 };
-$('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/profile.html') }); window.close(); };
+$('#settings').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html#settings') }); window.close(); };
 
 (async () => {
   applyIcons(document);

@@ -8,6 +8,16 @@ const INDUSTRIES = [
   'インフラ・エネルギー', '広告・マスコミ', '不動産・建設', '人材・サービス', '小売・消費財', 'その他',
 ];
 
+const PREFS = [
+  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+];
+
 const $ = (s) => document.querySelector(s);
 const grid = $('#grid');
 let all = [];
@@ -269,6 +279,7 @@ async function saveLinkModal() {
   await send({ type: 'SAVE_QUICK_LINKS', links: quickLinks });
   closeLinkModal();
   renderQuickLinks();
+  renderLinks();
 }
 
 async function deleteLinkItem() {
@@ -277,6 +288,7 @@ async function deleteLinkItem() {
   await send({ type: 'SAVE_QUICK_LINKS', links: quickLinks });
   closeLinkModal();
   renderQuickLinks();
+  renderLinks();
 }
 
 let linkEditMode = false;
@@ -295,8 +307,6 @@ function toggleLinkEditMode() {
       a.style.outlineOffset = '';
     }
   });
-}
-
 }
 
 // =====================================================================
@@ -760,6 +770,7 @@ async function refresh() {
   renderGrid();
   renderSenko();
   renderDeadlines();
+  renderLinks();
 }
 
 async function removeEntry(e) {
@@ -816,9 +827,67 @@ async function saveModal() {
 }
 
 // ---- ビュー切替 ----
+function renderLinks() {
+  const q = ($('#link-search')?.value || '').trim().toLowerCase();
+  const container = $('#links-grid');
+  container.innerHTML = '';
+  const filtered = quickLinks.filter((lk) => {
+    if (!q) return true;
+    return (lk.name || '').toLowerCase().includes(q) || (lk.url || '').toLowerCase().includes(q);
+  });
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty">リンクがありません。「リンクを追加」で登録してください。</div>';
+    return;
+  }
+  for (let i = 0; i < filtered.length; i++) {
+    const lk = filtered[i];
+    const realIdx = quickLinks.indexOf(lk);
+    const card = document.createElement('a');
+    card.className = 'link-card';
+    card.href = lk.url;
+    card.target = '_blank';
+    card.rel = 'noopener';
+    try {
+      const fav = document.createElement('img');
+      fav.className = 'link-card-icon';
+      fav.src = `https://www.google.com/s2/favicons?sz=64&domain=${new URL(lk.url).hostname}`;
+      fav.onerror = () => {
+        const fb = document.createElement('div');
+        fb.className = 'link-card-icon link-card-icon-fb';
+        fb.textContent = (lk.name || '?').charAt(0);
+        fav.replaceWith(fb);
+      };
+      card.appendChild(fav);
+    } catch {
+      const fb = document.createElement('div');
+      fb.className = 'link-card-icon link-card-icon-fb';
+      fb.textContent = (lk.name || '?').charAt(0);
+      card.appendChild(fb);
+    }
+    const body = document.createElement('div');
+    body.className = 'link-card-body';
+    const name = document.createElement('div');
+    name.className = 'link-card-name';
+    name.textContent = lk.name;
+    body.appendChild(name);
+    const url = document.createElement('div');
+    url.className = 'link-card-url';
+    try { url.textContent = new URL(lk.url).hostname; } catch { url.textContent = lk.url; }
+    body.appendChild(url);
+    card.appendChild(body);
+    const editBtn = document.createElement('button');
+    editBtn.className = 'link-card-edit';
+    editBtn.innerHTML = icon('pencil', 14);
+    editBtn.title = '編集';
+    editBtn.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); openLinkModal(realIdx); };
+    card.appendChild(editBtn);
+    container.appendChild(card);
+  }
+}
+
 function switchView(view) {
   document.querySelectorAll('.nav[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  for (const v of ['home', 'list', 'senko', 'deadlines']) $('#view-' + v).classList.toggle('hidden', v !== view);
+  for (const v of ['home', 'list', 'senko', 'deadlines', 'links', 'settings']) $('#view-' + v).classList.toggle('hidden', v !== view);
   if (location.hash.slice(1) !== view) location.hash = view;
 }
 
@@ -846,9 +915,8 @@ function init() {
   $('#modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
   $('#pw-toggle').onclick = () => { const f = $('#f-pw'); f.type = f.type === 'password' ? 'text' : 'password'; };
   document.querySelectorAll('.nav[data-view]').forEach((b) => { b.onclick = () => switchView(b.dataset.view); });
-  $('#nav-options').onclick = () => { location.href = 'profile.html'; };
   const initial = (location.hash || '#home').slice(1);
-  if (['home', 'list', 'senko', 'deadlines'].includes(initial)) switchView(initial);
+  if (['home', 'list', 'senko', 'deadlines', 'links', 'settings'].includes(initial)) switchView(initial);
   $('#senko-progress').onclick = () => { senkoMode = 'progress'; renderSenko(); };
   $('#senko-board').onclick = () => { senkoMode = 'board'; renderSenko(); };
 
@@ -878,6 +946,8 @@ function init() {
   };
 
   // リンク集
+  $('#add-link').onclick = () => openLinkModal(null);
+  $('#link-search').oninput = renderLinks;
   $('#edit-links').onclick = toggleLinkEditMode;
   $('#link-save').onclick = saveLinkModal;
   $('#link-cancel').onclick = closeLinkModal;
@@ -912,6 +982,160 @@ function init() {
     ev.target.value = '';
   };
 
+  // ---- 情報・設定 ----
+  initProfile();
+
   refresh();
 }
+
+// =====================================================================
+//  情報・設定（旧 profile.js）
+// =====================================================================
+function profFillOptions(id, values, { pad } = {}) {
+  const el = $('#' + id);
+  if (!el) return;
+  el.innerHTML = '<option value="">-</option>';
+  for (const v of values) {
+    const val = pad ? String(v).padStart(2, '0') : String(v);
+    const o = document.createElement('option');
+    o.value = val; o.textContent = val;
+    el.appendChild(o);
+  }
+}
+
+function profRange(a, b) {
+  const out = [];
+  for (let i = a; i <= b; i++) out.push(i);
+  return out;
+}
+
+function profSetVal(el, value) {
+  if (el.type === 'checkbox') el.checked = !!value;
+  else el.value = value ?? '';
+}
+function profGetVal(el) {
+  return el.type === 'checkbox' ? el.checked : el.value;
+}
+
+async function loadProfile() {
+  let prof, settings;
+  try {
+    const [pRes, sRes] = await Promise.all([
+      send({ type: 'GET_PROFILE' }),
+      send({ type: 'GET_SETTINGS' }),
+    ]);
+    prof = pRes?.profile;
+    settings = sRes?.settings;
+  } catch { /* service worker not ready */ }
+
+  if (!prof || !settings) {
+    const data = await chrome.storage.local.get(['profile', 'settings']);
+    prof = prof || data.profile || {};
+    settings = settings || { ...{ gasUrl: '', autoSync: true, syncPassword: false, showAutofillButton: true, syncToken: '' }, ...data.settings };
+  }
+
+  // 旧分割フィールドから統合フィールドへマイグレーション
+  if (!prof.curPostal && (prof.curPostal1 || prof.curPostal2)) {
+    prof.curPostal = (prof.curPostal1 || '') + (prof.curPostal2 || '');
+  }
+  if (!prof.homePostal && (prof.homePostal1 || prof.homePostal2)) {
+    prof.homePostal = (prof.homePostal1 || '') + (prof.homePostal2 || '');
+  }
+  if (!prof.curTel && (prof.curTel1 || prof.curTel2 || prof.curTel3)) {
+    prof.curTel = [prof.curTel1, prof.curTel2, prof.curTel3].filter(Boolean).join('-');
+  }
+  if (!prof.mobile && (prof.mobile1 || prof.mobile2 || prof.mobile3)) {
+    prof.mobile = [prof.mobile1, prof.mobile2, prof.mobile3].filter(Boolean).join('-');
+  }
+  if (!prof.homeTel && (prof.homeTel1 || prof.homeTel2 || prof.homeTel3)) {
+    prof.homeTel = [prof.homeTel1, prof.homeTel2, prof.homeTel3].filter(Boolean).join('-');
+  }
+
+  for (const el of document.querySelectorAll('[data-profile]')) {
+    profSetVal(el, prof[el.dataset.profile]);
+  }
+  for (const el of document.querySelectorAll('[data-setting]')) {
+    profSetVal(el, settings[el.dataset.setting]);
+  }
+  toggleHomeAddr();
+}
+
+async function saveProfile() {
+  const prof = {};
+  for (const el of document.querySelectorAll('[data-profile]')) {
+    prof[el.dataset.profile] = profGetVal(el);
+  }
+  const settingsPatch = {};
+  for (const el of document.querySelectorAll('[data-setting]')) {
+    settingsPatch[el.dataset.setting] = profGetVal(el);
+  }
+  try {
+    const [pRes, sRes] = await Promise.all([
+      send({ type: 'SET_PROFILE', patch: prof }),
+      send({ type: 'SET_SETTINGS', patch: settingsPatch }),
+    ]);
+    if (pRes?.ok && sRes?.ok) {
+      $('#saved').textContent = '保存しました';
+      setTimeout(() => ($('#saved').textContent = ''), 2500);
+      return;
+    }
+  } catch { /* service worker not ready */ }
+
+  const current = await chrome.storage.local.get(['profile', 'settings']);
+  await chrome.storage.local.set({
+    profile: { ...current.profile, ...prof },
+    settings: { ...current.settings, ...settingsPatch },
+  });
+  $('#saved').textContent = '保存しました（直接保存）';
+  setTimeout(() => ($('#saved').textContent = ''), 2500);
+}
+
+function toggleHomeAddr() {
+  const same = $('#homeSame')?.checked;
+  const block = $('#homeBlock');
+  if (block) block.classList.toggle('disabled', !!same);
+}
+
+let profSaveTimer = null;
+function profAutoSave() {
+  clearTimeout(profSaveTimer);
+  profSaveTimer = setTimeout(saveProfile, 600);
+}
+
+function initProfile() {
+  const thisYear = new Date().getFullYear();
+  profFillOptions('birthYear', profRange(thisYear - 40, thisYear - 15));
+  profFillOptions('birthMonth', profRange(1, 12), { pad: true });
+  profFillOptions('birthDay', profRange(1, 31), { pad: true });
+  profFillOptions('gradYear', profRange(thisYear, thisYear + 6));
+  profFillOptions('gradMonth', profRange(1, 12), { pad: true });
+  for (const sel of document.querySelectorAll('select.pref')) {
+    sel.innerHTML = '<option value="">-</option>';
+    for (const p of PREFS) {
+      const o = document.createElement('option');
+      o.value = p; o.textContent = p;
+      sel.appendChild(o);
+    }
+  }
+
+  // タブ切替
+  for (const tab of document.querySelectorAll('.prof-tab')) {
+    tab.onclick = () => {
+      document.querySelectorAll('.prof-tab').forEach((t) => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.prof-panel').forEach((p) =>
+        p.classList.toggle('hidden', p.id !== 'tab-' + tab.dataset.tab));
+    };
+  }
+
+  $('#prof-save').onclick = saveProfile;
+  if ($('#homeSame')) {
+    $('#homeSame').onchange = () => { toggleHomeAddr(); profAutoSave(); };
+  }
+  for (const el of document.querySelectorAll('[data-profile], [data-setting]')) {
+    el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', profAutoSave);
+  }
+
+  loadProfile();
+}
+
 init();

@@ -19,9 +19,14 @@
   },
   "action": {
     "default_popup": "src/popup.html",
-    "default_title": "就活マイページ マネージャー"
+    "default_title": "就活マイページ マネージャー",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
-  "options_page": "src/profile.html",
+  "options_page": "src/dashboard.html#settings",
   "content_scripts": [
     {
       "matches": [

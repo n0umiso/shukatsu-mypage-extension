@@ -16,7 +16,8 @@
       <button class="nav" data-view="list"><span data-icon="grid"></span>マイページ</button>
       <button class="nav" data-view="senko"><span data-icon="check"></span>選考管理</button>
       <button class="nav" data-view="deadlines"><span data-icon="calendar"></span>締切</button>
-      <button class="nav" id="nav-options"><span data-icon="settings"></span>情報・設定</button>
+      <button class="nav" data-view="links"><span data-icon="external"></span>リンク集</button>
+      <button class="nav" data-view="settings"><span data-icon="settings"></span>情報・設定</button>
     </nav>
     <div class="sync-box">
       <button id="sync"><span data-icon="refresh"></span>スプレッドシート同期</button>
@@ -47,19 +48,6 @@
         <div id="quick-links" class="quick-links"></div>
       </div>
 
-      <!-- リンク追加/編集モーダル -->
-      <div id="link-modal" class="modal hidden">
-        <div class="modal-card" style="width:380px">
-          <h3 id="link-modal-title">リンクを追加</h3>
-          <label>名前 <input id="lf-name" type="text" placeholder="例: テストセンター" /></label>
-          <label>URL <input id="lf-url" type="url" placeholder="https://..." /></label>
-          <div class="modal-actions">
-            <button id="link-save" class="primary">保存</button>
-            <button id="link-cancel" class="ghost">キャンセル</button>
-            <button id="link-delete" class="ghost" style="color:var(--danger);margin-left:auto;display:none">削除</button>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- マイページ一覧 -->
@@ -95,6 +83,19 @@
       <div id="senko-kanban" class="kanban hidden"></div>
     </section>
 
+    <!-- リンク集 -->
+    <section id="view-links" class="hidden">
+      <div class="page-head">
+        <h2>リンク集</h2>
+        <button id="add-link" class="primary"><span data-icon="plus"></span>リンクを追加</button>
+      </div>
+      <p class="lead">就活でよく使うサイトをまとめて管理できます。</p>
+      <div class="toolbar">
+        <input id="link-search" type="search" placeholder="リンクを検索（名前・URL）" />
+      </div>
+      <div id="links-grid" class="links-grid"></div>
+    </section>
+
     <!-- 締切 -->
     <section id="view-deadlines" class="hidden">
       <div class="page-head">
@@ -120,7 +121,159 @@
 
       <ul id="deadline-list" class="deadline-list"></ul>
     </section>
+
+    <!-- 情報・設定 -->
+    <section id="view-settings" class="hidden">
+      <div class="page-head">
+        <h2>情報入力・設定</h2>
+        <div class="settings-actions">
+          <span id="saved" class="saved"></span>
+          <button id="prof-save" class="primary">保存</button>
+        </div>
+      </div>
+      <p class="lead">ここに登録した情報を、対応サイトの登録フォームへ <b>自動入力</b> ボタンで一括入力します。データは端末内（chrome.storage）に保存されます。</p>
+
+      <nav class="prof-tabs">
+        <button class="prof-tab active" data-tab="basic">基本情報</button>
+        <button class="prof-tab" data-tab="contact">連絡先・住所</button>
+        <button class="prof-tab" data-tab="edu">学歴</button>
+        <button class="prof-tab" data-tab="settings">同期・機能設定</button>
+      </nav>
+
+      <!-- 基本情報 -->
+      <div id="tab-basic" class="prof-panel">
+        <div class="prof-grid">
+          <label>姓（漢字）<input data-profile="lastNameKanji" placeholder="田中" /></label>
+          <label>名（漢字）<input data-profile="firstNameKanji" placeholder="太郎" /></label>
+          <label>セイ（カナ）<input data-profile="lastNameKana" placeholder="タナカ" /></label>
+          <label>メイ（カナ）<input data-profile="firstNameKana" placeholder="タロウ" /></label>
+          <label>姓（ローマ字）<input data-profile="lastNameRoman" placeholder="Tanaka" /></label>
+          <label>名（ローマ字）<input data-profile="firstNameRoman" placeholder="Taro" /></label>
+          <label>性別
+            <select data-profile="gender"><option value="">未設定</option><option>男性</option><option>女性</option><option>回答しない</option></select>
+          </label>
+          <label>　</label>
+          <label>生年月日（年）<select data-profile="birthYear" id="birthYear"></select></label>
+          <div class="prof-grid sub">
+            <label>月<select data-profile="birthMonth" id="birthMonth"></select></label>
+            <label>日<select data-profile="birthDay" id="birthDay"></select></label>
+          </div>
+          <label>メールアドレス<input data-profile="email" type="email" placeholder="tanaka.taro@example.com" /></label>
+          <label>携帯メール（任意）<input data-profile="email2" type="email" placeholder="tanaka.taro@docomo.ne.jp" /></label>
+          <label>就業経験
+            <select data-profile="workExperience"><option value="">未設定</option><option value="有り">有り</option><option value="無し">無し</option></select>
+          </label>
+          <label>　</label>
+        </div>
+      </div>
+
+      <!-- 連絡先・住所 -->
+      <div id="tab-contact" class="prof-panel hidden">
+        <h3 class="prof-h">現住所
+          <label class="inline"><input type="checkbox" data-profile="isOverseas" id="overseas" /> 日本国外</label>
+        </h3>
+        <div class="prof-grid">
+          <label>郵便番号<input data-profile="curPostal" placeholder="1000001（ハイフンなし7桁 or 海外形式）" /></label>
+          <label>都道府県<select data-profile="curPref" class="pref"></select></label>
+          <label>住所1（市区町村）<input data-profile="curAddr1" placeholder="○○区○○町1-2-3" /></label>
+          <label>住所2（建物名など）<input data-profile="curAddr2" placeholder="○○マンション101" /></label>
+          <label>住所3（任意）<input data-profile="curAddr3" placeholder="号室など（3欄目があるサイト用）" /></label>
+          <label>　</label>
+          <label>電話番号<input data-profile="curTel" placeholder="03-1234-5678（ハイフン区切り）" /></label>
+          <label>携帯番号<input data-profile="mobile" placeholder="090-1234-5678（ハイフン区切り）" /></label>
+        </div>
+
+        <h3 class="prof-h">帰省先住所
+          <label class="inline"><input type="checkbox" data-profile="homeSameAsCurrent" id="homeSame" /> 現住所と同じ</label>
+        </h3>
+        <div class="prof-grid" id="homeBlock">
+          <label>郵便番号<input data-profile="homePostal" placeholder="1000001" /></label>
+          <label>都道府県<select data-profile="homePref" class="pref"></select></label>
+          <label>住所1<input data-profile="homeAddr1" /></label>
+          <label>住所2<input data-profile="homeAddr2" /></label>
+          <label>住所3（任意）<input data-profile="homeAddr3" /></label>
+          <label>電話番号<input data-profile="homeTel" placeholder="0463-12-3456（ハイフン区切り）" /></label>
+        </div>
+      </div>
+
+      <!-- 学歴 -->
+      <div id="tab-edu" class="prof-panel hidden">
+        <div class="prof-grid">
+          <label>学校区分
+            <select data-profile="schoolType">
+              <option value="">未設定</option>
+              <option>大学</option><option>大学院（修士）</option><option>大学院（博士）</option>
+              <option>短期大学</option><option>高等専門学校</option><option>専門学校</option>
+              <option>外国大学日本校</option><option>外国大学</option>
+            </select>
+          </label>
+          <label>国公私立
+            <select data-profile="uniType"><option value="">未設定</option><option>国立</option><option>公立</option><option>私立</option></select>
+          </label>
+          <label>大学所在地（都道府県）<select data-profile="uniPref" class="pref"></select></label>
+          <label>大学名<input data-profile="university" placeholder="○○大学" /></label>
+          <label>大学名ふりがな<input data-profile="universityKana" placeholder="まるまるだいがく" /></label>
+          <label>文理<select data-profile="scienceType"><option value="">未設定</option><option>文系</option><option>理系</option></select></label>
+          <label>　</label>
+          <label>学部<input data-profile="faculty" placeholder="△△学部" /></label>
+          <label>学科<input data-profile="department" placeholder="□□学科" /></label>
+          <label>ゼミ・研究室<input data-profile="seminarLab" placeholder="○○ゼミ" /></label>
+          <label>担当教授名<input data-profile="labProfessor" placeholder="○○教授" /></label>
+          <label>研究テーマ<input data-profile="researchTheme" placeholder="30文字以内" /></label>
+          <label>クラブ・サークル<input data-profile="clubCircle" placeholder="○○部" /></label>
+          <label>高校名<input data-profile="highSchool" placeholder="○○高等学校" /></label>
+          <label>高校コース<input data-profile="highSchoolCourse" placeholder="普通科" /></label>
+          <label>高校所在地（都道府県）<select data-profile="highSchoolPref" class="pref"></select></label>
+          <label>卒業（見込み）年<select data-profile="gradYear" id="gradYear"></select></label>
+          <div class="prof-grid sub">
+            <label>月<select data-profile="gradMonth" id="gradMonth"></select></label>
+            <label>区分<select data-profile="gradKbn"><option value="0">卒業（修了）見込み</option><option value="1">卒業（修了）</option></select></label>
+          </div>
+        </div>
+
+        <h3 class="prof-h" style="margin-top:20px">資格・語学</h3>
+        <div class="prof-grid">
+          <label>TOEIC スコア<input data-profile="toeicScore" placeholder="850" /></label>
+          <label>英語資格<input data-profile="englishQual" placeholder="英検準一級" /></label>
+          <label>TOEFL 種類
+            <select data-profile="toeflType"><option value="">未受験</option><option>PBT</option><option>CBT</option><option>iBT</option><option>ITP</option></select>
+          </label>
+          <label>TOEFL スコア<input data-profile="toeflScore" placeholder="90" /></label>
+          <label>GPA<input data-profile="gpa" placeholder="3.5" /></label>
+          <label>資格（複数は / 区切り）<input data-profile="qualifications" placeholder="日商簿記2級 / FP2級" /></label>
+        </div>
+        <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>自動入力</b> が該当項目を自動で選びます。</p>
+      </div>
+
+      <!-- 同期・機能設定 -->
+      <div id="tab-settings" class="prof-panel hidden">
+        <label>GAS Web アプリ URL
+          <input data-setting="gasUrl" type="url" placeholder="https://script.google.com/macros/s/XXXX/exec" />
+        </label>
+        <label>同期トークン（GAS 側のスクリプトプロパティ SYNC_TOKEN と同じ値）
+          <input data-setting="syncToken" type="password" placeholder="任意の文字列（空なら認証なし）" />
+        </label>
+        <label class="check"><input type="checkbox" data-setting="autoSync" /> 保存・取り込みのたびに自動でスプレッドシートへ同期</label>
+        <label class="check"><input type="checkbox" data-setting="syncPassword" /> パスワードもスプレッドシートへ送信する</label>
+        <label class="check"><input type="checkbox" data-setting="showAutofillButton" /> 対応サイトに「自動入力」ボタンを表示する</label>
+        <div class="settings-warn">パスワードを送信すると Google スプレッドシート上に平文で保存されます。不安な場合はオフに（端末内の保存は維持されます）。</div>
+      </div>
+    </section>
   </main>
+
+  <!-- リンク追加/編集モーダル -->
+  <div id="link-modal" class="modal hidden">
+    <div class="modal-card" style="width:380px">
+      <h3 id="link-modal-title">リンクを追加</h3>
+      <label>名前 <input id="lf-name" type="text" placeholder="例: テストセンター" /></label>
+      <label>URL <input id="lf-url" type="url" placeholder="https://..." /></label>
+      <div class="modal-actions">
+        <button id="link-save" class="primary">保存</button>
+        <button id="link-cancel" class="ghost">キャンセル</button>
+        <button id="link-delete" class="ghost" style="color:var(--danger);margin-left:auto;display:none">削除</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 追加／編集モーダル -->
   <div id="modal" class="modal hidden">
