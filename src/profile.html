@@ -65,7 +65,9 @@
 
     <!-- 連絡先・住所 -->
     <section id="tab-contact" class="panel hidden">
-      <h2>現住所</h2>
+      <h2>現住所
+        <label class="inline"><input type="checkbox" data-profile="isOverseas" id="overseas" /> 日本国外</label>
+      </h2>
       <div class="grid2">
         <label>郵便番号<input data-profile="curPostal" placeholder="1000001（ハイフンなし7桁 or 海外形式）" /></label>
         <label>都道府県<select data-profile="curPref" class="pref"></select></label>
@@ -112,6 +114,8 @@
         <label>学部<input data-profile="faculty" placeholder="△△学部" /></label>
         <label>学科<input data-profile="department" placeholder="□□学科" /></label>
         <label>ゼミ・研究室<input data-profile="seminarLab" placeholder="○○ゼミ" /></label>
+        <label>担当教授名<input data-profile="labProfessor" placeholder="○○教授" /></label>
+        <label>研究テーマ<input data-profile="researchTheme" placeholder="30文字以内" /></label>
         <label>クラブ・サークル<input data-profile="clubCircle" placeholder="○○部" /></label>
         <label>高校名<input data-profile="highSchool" placeholder="○○高等学校" /></label>
         <label>高校コース<input data-profile="highSchoolCourse" placeholder="普通科" /></label>
@@ -122,7 +126,19 @@
           <label>区分<select data-profile="gradKbn"><option value="0">卒業（修了）見込み</option><option value="1">卒業（修了）</option></select></label>
         </div>
       </div>
-      <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>自動入力</b> が該当項目を自動で選びます。高校名など毎回同じ自由記述も、質問文に応じて自動補完します。</p>
+
+      <h2 style="margin-top:20px">資格・語学</h2>
+      <div class="grid2">
+        <label>TOEIC スコア<input data-profile="toeicScore" placeholder="850" /></label>
+        <label>英語資格<input data-profile="englishQual" placeholder="英検準一級" /></label>
+        <label>TOEFL 種類
+          <select data-profile="toeflType"><option value="">未受験</option><option>PBT</option><option>CBT</option><option>iBT</option><option>ITP</option></select>
+        </label>
+        <label>TOEFL スコア<input data-profile="toeflScore" placeholder="90" /></label>
+        <label>GPA<input data-profile="gpa" placeholder="3.5" /></label>
+        <label>資格（複数は / 区切り）<input data-profile="qualifications" placeholder="日商簿記2級 / FP2級" /></label>
+      </div>
+      <p class="lead" style="margin-top:16px">※ i-web は大学名・学部・学科を一覧から<b>選択</b>する方式です。ここの表記を<b>正式名称に合わせる</b>と、各選択ページで <b>自動入力</b> が該当項目を自動で選びます。</p>
     </section>
 
     <!-- 同期・機能設定 -->

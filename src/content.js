@@ -776,10 +776,16 @@
     if (setSelect('birth_m', pad2(p.birthMonth))) n++;
     if (setSelect('birth_d', pad2(p.birthDay))) n++;
 
-    // 郵便番号（現住所: yubing_h + yubing_l）
+    // 国外チェック
+    if (p.isOverseas) {
+      const kaigaiEl = document.querySelector('input[name="kaigaig"]');
+      if (kaigaiEl && !kaigaiEl.checked) { kaigaiEl.click(); n++; }
+    }
+
+    // 郵便番号（現住所: yubing_h + yubing_l / 国外: yubing_kaigai）
     if (p.curPostal) {
       const digits = p.curPostal.replace(/[-\s　ー－]/g, '');
-      if (/^\d{7}$/.test(digits)) {
+      if (!p.isOverseas && /^\d{7}$/.test(digits)) {
         if (setField('yubing_h', digits.slice(0, 3))) n++;
         if (setField('yubing_l', digits.slice(3))) n++;
       } else {
@@ -788,25 +794,33 @@
     }
 
     // 都道府県（現住所）
-    if (p.curPref) {
+    if (p.curPref && !p.isOverseas) {
       const code = PREFS.indexOf(p.curPref.trim()) + 1;
       if (code > 0 && setSelect('keng', String(code))) n++;
     }
 
-    // 電話番号（現住所）
+    // 電話番号（現住所: 国内3分割 / 国外1欄）
     const ct = splitPhone(p.curTel, p.curTel1, p.curTel2, p.curTel3);
     if (ct) {
-      if (setField('telg_h', ct[0])) n++;
-      if (setField('telg_m', ct[1])) n++;
-      if (setField('telg_l', ct[2])) n++;
+      if (p.isOverseas) {
+        if (setField('telg_kaigai', ct.join('-'))) n++;
+      } else {
+        if (setField('telg_h', ct[0])) n++;
+        if (setField('telg_m', ct[1])) n++;
+        if (setField('telg_l', ct[2])) n++;
+      }
     }
 
-    // 携帯
+    // 携帯（国内3分割 / 国外1欄）
     const mb = splitPhone(p.mobile, p.mobile1, p.mobile2, p.mobile3);
     if (mb) {
-      if (setField('keitai_h', mb[0])) n++;
-      if (setField('keitai_m', mb[1])) n++;
-      if (setField('keitai_l', mb[2])) n++;
+      if (p.isOverseas) {
+        if (setField('keitai_kaigai', mb.join('-'))) n++;
+      } else {
+        if (setField('keitai_h', mb[0])) n++;
+        if (setField('keitai_m', mb[1])) n++;
+        if (setField('keitai_l', mb[2])) n++;
+      }
     }
 
     // 帰省先: 「現住所と同じ」チェックボックス
@@ -950,6 +964,16 @@
       let val = null;
       if (/高校名|高校.*正式名称/.test(q)) val = p.highSchool;
       else if (/コース|課程/.test(q) && /高校/.test(q)) val = p.highSchoolCourse || '';
+      else if (/ゼミ|研究室/.test(q) && !/教授|テーマ/.test(q)) val = p.seminarLab;
+      else if (/教授|指導教員|担当/.test(q)) val = p.labProfessor;
+      else if (/研究テーマ|研究内容|研究概要/.test(q)) val = p.researchTheme;
+      else if (/GPA|成績/.test(q)) val = p.gpa;
+      else if (/TOEIC|トーイック/.test(q) && !/TOEFL/.test(q)) val = p.toeicScore;
+      else if (/TOEFL.*スコア|TOEFL.*点/.test(q)) val = p.toeflScore;
+      else if (/TOEFL.*種類|TOEFL.*種別/.test(q)) val = p.toeflType;
+      else if (/英語.*資格|英検|語学.*資格/.test(q)) val = p.englishQual;
+      else if (/資格|免許/.test(q) && !/英語|語学|TOEIC|TOEFL/.test(q)) val = p.qualifications;
+      else if (/クラブ|サークル|部活/.test(q)) val = p.clubCircle;
       if (val) { el.value = val; fire(el); n++; }
     }
 
